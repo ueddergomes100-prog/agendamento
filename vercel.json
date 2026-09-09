@@ -4,7 +4,12 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist-vercel",
-  "rewrites": [{ "source": "/((?!assets/|images/|favicon.svg).*)", "destination": "/index.html" }],
+  "rewrites": [
+    {
+      "source": "/((?!assets/|images/|icons/|splash/|site.webmanifest|sw.js|favicon.svg).*)",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

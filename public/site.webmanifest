@@ -1,0 +1,32 @@
+{
+  "id": "/?mode=demo",
+  "name": "Maison Bella - Agendamento",
+  "short_name": "Maison Bella",
+  "description": "Reserve serviços de beleza e acompanhe seus agendamentos.",
+  "lang": "pt-BR",
+  "start_url": "/?mode=demo",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff7f2",
+  "theme_color": "#fff7f2",
+  "categories": ["beauty", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

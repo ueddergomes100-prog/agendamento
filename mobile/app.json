@@ -1,17 +1,21 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Maison Bella",
+    "slug": "maison-bella",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "backgroundColor": "#FFF7F2",
+    "primaryColor": "#B9675F",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/icon.png"
     },
     "android": {
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFF7F2",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -23,7 +27,28 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFF7F2",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "android": {
+            "backgroundColor": "#FFF7F2",
+            "image": "./assets/splash-icon.png",
+            "imageWidth": 220,
+            "resizeMode": "contain"
+          },
+          "ios": {
+            "backgroundColor": "#FFF7F2",
+            "image": "./assets/splash-icon.png",
+            "imageWidth": 220,
+            "resizeMode": "contain"
+          }
+        }
+      ]
     ]
   }
 }
