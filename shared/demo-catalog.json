@@ -1,0 +1,190 @@
+{
+  "salon": {
+    "id": "10000000-0000-4000-8000-000000000001",
+    "name": "Maison Bella",
+    "slug": "maison-bella",
+    "active": true,
+    "description": "Um espaço para desacelerar e redescobrir sua beleza.",
+    "organization_id": "00000000-0000-4000-8000-000000000001"
+  },
+  "units": [
+    {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "name": "Jardins",
+      "address": "Rua Oscar Freire, 540 · Jardins, São Paulo",
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "timezone": "America/Sao_Paulo"
+    }
+  ],
+  "addons": [
+    {
+      "id": "294a6956-5ef3-45fc-b286-51bf9ba81ce5",
+      "name": "Massagem capilar",
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000001",
+      "price_cents": 4000,
+      "duration_minutes": 15
+    },
+    {
+      "id": "15c7de79-51a7-4fb3-906f-eb570f2d6d79",
+      "name": "Nail art delicada",
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000002",
+      "price_cents": 2000,
+      "duration_minutes": 20
+    }
+  ],
+  "branding": {
+    "preset": "Rose",
+    "logo_url": null,
+    "salon_id": "10000000-0000-4000-8000-000000000001",
+    "cover_url": "https://images.unsplash.com/photo-1781450090585-1a511b7066d9?auto=format&fit=crop&w=1800&q=85",
+    "font_style": "Editorial",
+    "dark_allowed": true,
+    "primary_color": null
+  },
+  "policies": {
+    "salon_id": "10000000-0000-4000-8000-000000000001",
+    "cancel_hours": 24,
+    "reschedule_hours": 12
+  },
+  "services": [
+    {
+      "id": "60000000-0000-4000-8000-000000000003",
+      "name": "Corte personalizado",
+      "active": true,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "image_url": "https://images.unsplash.com/photo-1638064432604-8da1fc75de09?auto=format&fit=crop&w=900&q=85",
+      "category_id": "40000000-0000-4000-8000-000000000001",
+      "description": "Um novo olhar para você. Consultoria de estilo, corte e finalização.",
+      "price_cents": 14000,
+      "deposit_cents": 0,
+      "cleanup_minutes": 10,
+      "duration_minutes": 60,
+      "min_notice_minutes": null,
+      "preparation_minutes": 0
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000004",
+      "name": "Design de sobrancelhas",
+      "active": true,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "image_url": null,
+      "category_id": "40000000-0000-4000-8000-000000000003",
+      "description": "Harmonia e delicadeza para valorizar a expressão do seu rosto.",
+      "price_cents": 6500,
+      "deposit_cents": 0,
+      "cleanup_minutes": 10,
+      "duration_minutes": 30,
+      "min_notice_minutes": null,
+      "preparation_minutes": 0
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "name": "Escova & hidratação",
+      "active": true,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "image_url": "https://images.unsplash.com/photo-1638064432604-8da1fc75de09?auto=format&fit=crop&w=900&q=85",
+      "category_id": "40000000-0000-4000-8000-000000000001",
+      "description": "Brilho, movimento e um cuidado profundo para renovar seus fios.",
+      "price_cents": 16000,
+      "deposit_cents": 0,
+      "cleanup_minutes": 10,
+      "duration_minutes": 75,
+      "min_notice_minutes": null,
+      "preparation_minutes": 0
+    },
+    {
+      "id": "60000000-0000-4000-8000-000000000002",
+      "name": "Manicure & pedicure",
+      "active": true,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "image_url": "https://images.unsplash.com/photo-1610992015762-45dca7fa3a85?auto=format&fit=crop&w=900&q=85",
+      "category_id": "40000000-0000-4000-8000-000000000002",
+      "description": "Seu ritual de cuidado, com acabamento impecável e a sua cor favorita.",
+      "price_cents": 9500,
+      "deposit_cents": 0,
+      "cleanup_minutes": 10,
+      "duration_minutes": 90,
+      "min_notice_minutes": null,
+      "preparation_minutes": 0
+    }
+  ],
+  "settings": {
+    "salon_id": "10000000-0000-4000-8000-000000000001",
+    "slot_minutes": 30,
+    "max_future_days": 60,
+    "min_notice_minutes": 60
+  },
+  "categories": [
+    {
+      "id": "40000000-0000-4000-8000-000000000001",
+      "name": "Cabelo",
+      "salon_id": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000002",
+      "name": "Unhas",
+      "salon_id": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "40000000-0000-4000-8000-000000000003",
+      "name": "Sobrancelhas",
+      "salon_id": "10000000-0000-4000-8000-000000000001"
+    }
+  ],
+  "professionals": [
+    {
+      "id": "50000000-0000-4000-8000-000000000001",
+      "bio": "Cortes que respeitam sua personalidade e tratamentos para cabelos cheios de vida.",
+      "name": "Mariana Costa",
+      "rating": null,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "photo_url": null,
+      "specialty": "Hair stylist",
+      "review_count": 0
+    },
+    {
+      "id": "50000000-0000-4000-8000-000000000002",
+      "bio": "Um olhar atento aos detalhes. Especialista em unhas naturais, nail art e acabamentos delicados.",
+      "name": "Júlia Almeida",
+      "rating": null,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "photo_url": null,
+      "specialty": "Nail designer",
+      "review_count": 0
+    },
+    {
+      "id": "50000000-0000-4000-8000-000000000003",
+      "bio": "Cuidado e precisão para realçar o que torna sua beleza única.",
+      "name": "Camila Santos",
+      "rating": null,
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "photo_url": null,
+      "specialty": "Beauty expert",
+      "review_count": 0
+    }
+  ],
+  "service_professionals": [
+    {
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000001",
+      "professional_id": "50000000-0000-4000-8000-000000000001"
+    },
+    {
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000002",
+      "professional_id": "50000000-0000-4000-8000-000000000002"
+    },
+    {
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000003",
+      "professional_id": "50000000-0000-4000-8000-000000000001"
+    },
+    {
+      "salon_id": "10000000-0000-4000-8000-000000000001",
+      "service_id": "60000000-0000-4000-8000-000000000004",
+      "professional_id": "50000000-0000-4000-8000-000000000003"
+    }
+  ]
+}

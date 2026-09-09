@@ -1,0 +1,15 @@
+.git
+.data
+.next
+.vinext
+.wrangler
+dist
+dist-vercel
+node_modules
+mobile
+server
+tests
+outputs
+work
+.env*
+*.tsbuildinfo
