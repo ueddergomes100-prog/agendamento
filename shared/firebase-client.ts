@@ -1,7 +1,7 @@
 import {getApps,initializeApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,updateProfile,sendPasswordResetEmail,signInWithPopup,GoogleAuthProvider} from 'firebase/auth';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
-import {initializeAppCheck,ReCaptchaV3Provider} from 'firebase/app-check';
+import {initializeAppCheck,ReCaptchaEnterpriseProvider} from 'firebase/app-check';
 import {getFirestore,connectFirestoreEmulator,collection,query,where,orderBy,limit,onSnapshot} from 'firebase/firestore';
 import {getStorage,connectStorageEmulator,ref,uploadBytes,getDownloadURL} from 'firebase/storage';
 import {SalonApi} from './client';
@@ -26,7 +26,7 @@ export class FirebaseSalonApi extends SalonApi {
         connectFunctionsEmulator(this.functions,'127.0.0.1',5001);
         connectStorageEmulator(this.storage,'127.0.0.1',9199);
       }else if(import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY){
-        initializeAppCheck(this.app,{provider:new ReCaptchaV3Provider(import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY),isTokenAutoRefreshEnabled:true});
+        initializeAppCheck(this.app,{provider:new ReCaptchaEnterpriseProvider(import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY),isTokenAutoRefreshEnabled:true});
       }
       initialized=true;
     }

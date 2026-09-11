@@ -4,7 +4,7 @@
   "short_name": "Maison Bella",
   "description": "Reserve serviços de beleza e acompanhe seus agendamentos.",
   "lang": "pt-BR",
-  "start_url": "/?mode=demo",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

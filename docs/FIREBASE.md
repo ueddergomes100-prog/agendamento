@@ -38,8 +38,11 @@ Expiração é revalidada com o relógio do servidor. TTL apenas remove lixo; n�
 - Authentication inicializado; e-mail/senha habilitados.
 - `agendamento-taupe-mu.vercel.app` autorizado no Authentication.
 - Firestore Rules publicadas e compiladas com sucesso.
-- Faturamento ainda desativado (plano Spark na última consulta). Cloud Functions, Scheduler, Storage e TTL precisam da ativação do Blaze antes da publicação completa.
-- App Check ainda requer registro da chave reCAPTCHA do domínio. Nunca desativar a verificação de produção para contornar essa etapa.
+- Blaze ativo e confirmado pela API. As três Functions (`salonApi`, `deliverNotifications`, `releaseExpiredHolds`) estão ativas em São Paulo, com dois jobs Scheduler habilitados. Os oito índices compostos estão prontos; as políticas TTL foram enviadas.
+- Bucket `agendamento-salao-bfe26.firebasestorage.app` criado em São Paulo e regras publicadas. O agente do Storage recebeu o papel específico de consulta ao Firestore usado pelas regras.
+- App Check com reCAPTCHA Enterprise, domínio de produção autorizado e tokens de uma hora. Verificação obrigatória na callable, no Firestore e no Storage. O agente do App Check possui seu papel de serviço específico.
+- Vercel configurada para abrir o modo real por padrão. A demonstração permanece em `/?mode=demo`. O PWA inicia em `/`; o `id` original do manifesto foi mantido para preservar a identidade das instalações existentes.
+- Artifact Registry remove imagens de builds com mais de sete dias para limitar acúmulo de armazenamento.
 - Pagamento e WhatsApp ficam pendentes por decisão do usuário. Sinal maior que zero bloqueia confirmação até existir gateway; não há aprovação fictícia.
 
 ## Rodar e testar
@@ -60,13 +63,15 @@ Para testar a interface: inicie `npm run firebase:emulators`, defina `VITE_FIREB
 ## Publicação após as dependências externas
 
 1. O proprietário ativa Blaze e configura orçamento/alertas no Google Cloud.
-2. Registrar o app no App Check com reCAPTCHA v3 do domínio. Configurar a chave pública em `VITE_FIREBASE_APP_CHECK_SITE_KEY`; segredo fica no console Firebase.
+2. Registrar o app no App Check com reCAPTCHA Enterprise do domínio. Habilitar a API App Check e a identidade de serviço. Configurar a chave pública em `VITE_FIREBASE_APP_CHECK_SITE_KEY`.
 3. Inicializar bucket Storage e publicar `npm run firebase:deploy`. Instalar índices e TTL com o arquivo versionado; aguardar índices prontos.
 4. Configurar `VITE_FIREBASE_ENABLED=true` na Vercel apenas após validar as callables e permissões em produção. Nenhuma service account ou segredo entra no build web.
 5. Confirmar no dispositivo: cadastro, criação de salão, upload, reserva em duas contas, reabertura da agenda e regra de cancelamento. Só então habilitar operação real para clientes.
 6. FCM: obter chave VAPID, configurar registro/renovação de devices e service worker de mensagens, habilitar push com consentimento explícito e testar entrega. Os workers estão preparados, mas não houve envio real validado.
 
 ## Limites e trabalho restante da especificação completa
+
+Validação de produção em 11/09/2026: chamadas sem App Check recusadas; perfil e provisionamento de salão; catálogo em rascunho isolado e catálogo publicado acessível; papel administrativo negado à cliente; disputa simultânea com exatamente uma reserva vencedora; confirmação protegida por titularidade; persistência, reagendamento e cancelamento; upload permitido à proprietária e recusado à cliente; leitura de perfil alheio e escrita direta no Firestore recusadas. A interface publicada também consultou horários e confirmou uma reserva com o provedor Enterprise normal. Contas, salão e imagem de validação são temporários e removidos após os testes; tokens de debug nunca são incluídos no frontend.
 
 Esta entrega é o núcleo Firebase de agendamento web/PWA, não toda a plataforma das 76 seções. Limites iniciais por salão: 150 serviços, 100 profissionais, catálogo público de 700 KB, 400 intervalos por profissional/dia; listas paginadas/limitadas. Esses limites são proteções iniciais, não evidência de capacidade para 100 mil salões.
 

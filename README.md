@@ -37,7 +37,7 @@ Os testes cobrem o núcleo Firebase no emulador (multi-tenancy, regras, holds, c
 ## Limites da entrega
 
 - **Web:** demonstração navegável com dados locais. Disponibilidade demonstrativa não deve ser usada para receber clientes reais ou conciliar reservas entre dispositivos.
-- **Produção:** `?mode=live` usa Firebase quando `VITE_FIREBASE_ENABLED=true`; sem essa variável, a URL pública continua no modo demonstrativo. `?mode=demo` sempre força a demonstração.
+- **Produção:** o domínio Vercel usa Firebase por padrão, com `VITE_FIREBASE_ENABLED=true`. `?mode=live` também seleciona Firebase explicitamente; `?mode=demo` sempre força a demonstração.
 - **Pagamentos e WhatsApp:** ficam pendentes de provedor e homologação, conforme decisão atual. Serviços com sinal não são confirmados sem gateway; nenhuma mensagem externa é declarada como enviada.
 - **iOS/Android:** a pasta `mobile/` ainda contém a base Expo inicial. Esta entrega concentra o front-end web responsivo; não é um aplicativo nativo concluído nem publicado nas lojas.
 - **Publicação Sites:** o projeto referenciado em `.openai/hosting.json` não foi encontrado na conta conectada. O vínculo foi preservado; a versão local funciona independentemente dessa publicação.
@@ -56,6 +56,6 @@ A configuração `vercel.json` publica a mesma experiência React como aplicaç�
 - Teste local do build: `npm run preview:vercel`
 - Node.js: 24.x
 
-Na ausência de `VITE_FIREBASE_ENABLED=true`, a publicação abre em modo demonstrativo. Para liberar o modo real na Vercel, publique as Functions, configure App Check e defina apenas `VITE_FIREBASE_ENABLED=true` e `VITE_FIREBASE_APP_CHECK_SITE_KEY`; a configuração pública do Firebase está versionada e não substitui regras, Authentication ou Functions. Nunca publique credenciais administrativas.
+Na ausência de `VITE_FIREBASE_ENABLED=true`, uma nova instalação abre em modo demonstrativo. A Vercel deste projeto já possui `VITE_FIREBASE_ENABLED=true` e `VITE_FIREBASE_APP_CHECK_SITE_KEY` (chave pública do reCAPTCHA Enterprise). As Functions, regras, índices, Storage e App Check foram publicados. A configuração pública do Firebase está versionada e não substitui regras, Authentication ou Functions. Nunca publique credenciais administrativas. Consulte `docs/FIREBASE.md` para a validação e as integrações ainda pendentes.
 
 A pasta `mobile/` e a API Express de desenvolvimento não são implantadas na Vercel. A integração Git permite republicar o front-end após novos commits na branch `main`.
