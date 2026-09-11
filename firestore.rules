@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function superAdmin() { return signedIn() && request.auth.token.superAdmin == true; }
+    function member(salonId) {
+      return signedIn() && exists(/databases/$(database)/documents/salons/$(salonId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/salons/$(salonId)/members/$(request.auth.uid)).data.status == 'ACTIVE';
+    }
+    function role(salonId, roles) {
+      return member(salonId) && get(/databases/$(database)/documents/salons/$(salonId)/members/$(request.auth.uid)).data.role in roles;
+    }
+    function staffAppointment(salonId) {
+      return role(salonId, ['OWNER','MANAGER','RECEPTIONIST']) ||
+        (role(salonId,['PROFESSIONAL']) && resource.data.professional_id == get(/databases/$(database)/documents/salons/$(salonId)/members/$(request.auth.uid)).data.professionalId);
+    }
+    // Public information is projected separately; tenant records contain private data.
+    match /publicSalons/{salonId} { allow read: if resource.data.published == true; }
+    match /salonSlugs/{slug} { allow get: if true; }
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      match /salons/{salonId} { allow read: if signedIn() && request.auth.uid == userId; }
+      match /devices/{deviceId} { allow read: if signedIn() && request.auth.uid == userId; }
+      match /notifications/{noticeId} { allow read: if signedIn() && request.auth.uid == userId; }
+    }
+    match /salons/{salonId} {
+      allow get: if member(salonId) || superAdmin();
+      match /members/{userId} {
+        allow read: if (signedIn() && request.auth.uid == userId) || role(salonId,['OWNER','MANAGER']) || superAdmin();
+      }
+      match /appointments/{appointmentId} {
+        allow read: if signedIn() && (resource.data.client_id == request.auth.uid || staffAppointment(salonId) || superAdmin());
+      }
+      match /appointmentHolds/{holdId} {
+        allow get: if signedIn() && (resource.data.client_id == request.auth.uid || role(salonId,['OWNER','MANAGER','RECEPTIONIST']));
+      }
+      match /clients/{clientId} { allow read: if role(salonId,['OWNER','MANAGER','RECEPTIONIST']); }
+      match /payments/{paymentId} { allow read: if role(salonId,['OWNER','MANAGER','FINANCE']); }
+      match /metrics/{metricId} { allow read: if role(salonId,['OWNER','MANAGER','FINANCE']); }
+      match /auditLogs/{auditId} { allow read: if role(salonId,['OWNER','MANAGER']) || superAdmin(); }
+      match /{collection}/{docId} {
+        allow read: if collection in ['services','professionals','units','branding','settings','features','policies','categories'] && member(salonId);
+      }
+    }
+    match /plans/{id} { allow read: if signedIn(); }
+    match /platformAnalytics/{id} { allow read: if superAdmin(); }
+    match /platformSettings/{id} { allow read: if superAdmin(); }
+    // All writes use callable functions with validation and a server-verified tenant context.
+    match /{document=**} { allow write: if false; }
+  }
+}

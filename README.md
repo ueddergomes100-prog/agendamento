@@ -1,10 +1,10 @@
-# Maison Bella — apresentação do front-end
+# Maison Bella — plataforma Firebase para salões
 
-Experiência web responsiva para demonstrar o produto no computador ou em uma tela de celular. Os dados de demonstração são fictícios, persistidos neste navegador e separados da API de produção.
+Experiência web responsiva com modo de demonstração e modo Firebase. O modo de demonstração usa dados fictícios neste navegador; o modo Firebase usa Authentication, Firestore, Storage e Cloud Functions do projeto `agendamento-salao-bfe26`.
 
 ## Iniciar
 
-Requer Node.js 24. Em `H:\app agendamento\app agendamento`:
+Requer Node.js 22+ para as Functions e Java 21+ para o Firebase Emulator Suite. Em `H:\app agendamento\app agendamento`:
 
 ```powershell
 npm install # somente se as dependências não estiverem instaladas
@@ -32,13 +32,13 @@ npm test
 npm run build
 ```
 
-Os testes cobrem o domínio PostgreSQL existente e o adaptador de apresentação, incluindo concorrência na mesma sessão, persistência, cancelamento, reagendamento, liberação de reserva, extras, preferências e separação dos dados de clientes. Não substituem homologação visual em dispositivos ou testes de produção.
+Os testes cobrem o núcleo Firebase no emulador (multi-tenancy, regras, holds, concorrência, expiração, bloqueios, políticas, reagendamento, membros revogados e preferências), além do domínio legado e do adaptador de apresentação. Não substituem homologação visual em dispositivos ou testes de produção.
 
 ## Limites da entrega
 
 - **Web:** demonstração navegável com dados locais. Disponibilidade demonstrativa não deve ser usada para receber clientes reais ou conciliar reservas entre dispositivos.
-- **Produção:** configure as variáveis públicas do Supabase. `?mode=live` usa Supabase quando configurado ou a API local na porta 4318. Sem credenciais, o modo padrão é demonstrativo; `?mode=demo` sempre força a demonstração.
-- **Pagamentos, WhatsApp e push:** dependem de provedores e homologação. Na apresentação não há cobranças nem envios externos.
+- **Produção:** `?mode=live` usa Firebase quando `VITE_FIREBASE_ENABLED=true`; sem essa variável, a URL pública continua no modo demonstrativo. `?mode=demo` sempre força a demonstração.
+- **Pagamentos e WhatsApp:** ficam pendentes de provedor e homologação, conforme decisão atual. Serviços com sinal não são confirmados sem gateway; nenhuma mensagem externa é declarada como enviada.
 - **iOS/Android:** a pasta `mobile/` ainda contém a base Expo inicial. Esta entrega concentra o front-end web responsivo; não é um aplicativo nativo concluído nem publicado nas lojas.
 - **Publicação Sites:** o projeto referenciado em `.openai/hosting.json` não foi encontrado na conta conectada. O vínculo foi preservado; a versão local funciona independentemente dessa publicação.
 
@@ -56,6 +56,6 @@ A configuração `vercel.json` publica a mesma experiência React como aplicaç�
 - Teste local do build: `npm run preview:vercel`
 - Node.js: 24.x
 
-Na ausência das variáveis Supabase, a publicação abre em modo demonstrativo. Cada navegador mantém seus próprios dados fictícios; reservas feitas em um dispositivo não aparecem em outro. Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` na Vercel somente quando o backend estiver pronto para uso real. Nunca publique chaves administrativas.
+Na ausência de `VITE_FIREBASE_ENABLED=true`, a publicação abre em modo demonstrativo. Para liberar o modo real na Vercel, publique as Functions, configure App Check e defina apenas `VITE_FIREBASE_ENABLED=true` e `VITE_FIREBASE_APP_CHECK_SITE_KEY`; a configuração pública do Firebase está versionada e não substitui regras, Authentication ou Functions. Nunca publique credenciais administrativas.
 
 A pasta `mobile/` e a API Express de desenvolvimento não são implantadas na Vercel. A integração Git permite republicar o front-end após novos commits na branch `main`.

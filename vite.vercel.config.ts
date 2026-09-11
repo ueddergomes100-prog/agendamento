@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/postcss';
 import {fileURLToPath} from 'node:url';
 
 // The same customer experience, delivered as static assets on Vercel.
-// Production data is accessed directly through the public Supabase client.
+// Production operations use Firebase Authentication and callable Cloud Functions.
 export default defineConfig({
   plugins:[react()],
   resolve:{alias:{'@':fileURLToPath(new URL('.',import.meta.url))}},

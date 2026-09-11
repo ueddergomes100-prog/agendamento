@@ -1,0 +1,18 @@
+{
+  "indexes": [
+    {"collectionGroup":"publicSalons","queryScope":"COLLECTION","fields":[{"fieldPath":"published","order":"ASCENDING"},{"fieldPath":"name","order":"ASCENDING"}]},
+    {"collectionGroup":"appointments","queryScope":"COLLECTION","fields":[{"fieldPath":"client_id","order":"ASCENDING"},{"fieldPath":"starts_at","order":"ASCENDING"}]},
+    {"collectionGroup":"appointments","queryScope":"COLLECTION","fields":[{"fieldPath":"professional_id","order":"ASCENDING"},{"fieldPath":"starts_at","order":"ASCENDING"}]},
+    {"collectionGroup":"appointments","queryScope":"COLLECTION","fields":[{"fieldPath":"unit_id","order":"ASCENDING"},{"fieldPath":"starts_at","order":"ASCENDING"}]},
+    {"collectionGroup":"appointments","queryScope":"COLLECTION","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"starts_at","order":"ASCENDING"}]},
+    {"collectionGroup":"appointments","queryScope":"COLLECTION","fields":[{"fieldPath":"service_id","order":"ASCENDING"},{"fieldPath":"starts_at","order":"ASCENDING"}]},
+    {"collectionGroup":"notifications","queryScope":"COLLECTION","fields":[{"fieldPath":"salon_id","order":"ASCENDING"},{"fieldPath":"created_at","order":"DESCENDING"}]},
+    {"collectionGroup":"outbox","queryScope":"COLLECTION_GROUP","fields":[{"fieldPath":"status","order":"ASCENDING"},{"fieldPath":"scheduledAt","order":"ASCENDING"}]}
+  ],
+  "fieldOverrides": [
+    {"collectionGroup":"appointmentHolds","fieldPath":"expiresAt","ttl":true,"indexes":[{"order":"ASCENDING","queryScope":"COLLECTION_GROUP"}]},
+    {"collectionGroup":"rateLimits","fieldPath":"expiresAt","ttl":true,"indexes":[]},
+    {"collectionGroup":"publicSalons","fieldPath":"catalog","indexes":[]},
+    {"collectionGroup":"scheduleDays","fieldPath":"entries","indexes":[]}
+  ]
+}

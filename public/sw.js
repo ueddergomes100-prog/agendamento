@@ -1,4 +1,4 @@
-const CACHE_NAME = "maison-bella-pwa-v1";
+const CACHE_NAME = "maison-bella-pwa-v2";
 const APP_SHELL = [
   "/",
   "/?mode=demo",
@@ -26,6 +26,8 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
   if (event.request.method !== "GET") {
     return;
   }
@@ -35,6 +37,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Never cache API responses or private customer data.
+  if (!/^\/(assets|icons|images|splash)\//.test(url.pathname) && url.pathname !== '/site.webmanifest') return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) {

@@ -1,4 +1,6 @@
 export const presets={
+ Luxury:{primary:'#614d30',secondary:'#eee3cf',accent:'#ac873f',background:'#fcfaf5',surface:'#ffffff',text:'#30291f',muted:'#746750',border:'#e5d9c2'},
+ Minimal:{primary:'#3f4d49',secondary:'#e8eeeb',accent:'#7e9087',background:'#fafcfb',surface:'#ffffff',text:'#24342c',muted:'#65756d',border:'#dce5df'},
  Rose:{primary:'#92515f',secondary:'#f2e3e5',accent:'#b18c59',background:'#fcf9f7',surface:'#ffffff',text:'#352c30',muted:'#78676e',border:'#eadfe1'},
  Champagne:{primary:'#7c613d',secondary:'#f2eadc',accent:'#997945',background:'#fcfaf6',surface:'#ffffff',text:'#362f27',muted:'#75695c',border:'#e6ded1'},
  Blossom:{primary:'#965573',secondary:'#f4e5ee',accent:'#9374a5',background:'#fdf9fc',surface:'#ffffff',text:'#3b2c37',muted:'#7c6876',border:'#e9ddea'},

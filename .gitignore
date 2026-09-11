@@ -41,9 +41,13 @@ next-env.d.ts
 /mobile/node_modules/
 /mobile/.expo/
 /mobile/dist/
+/functions/node_modules/
+/.firebase/
+*-debug.log*
 !/.env.example
 *.tsbuildinfo
 **/.claude/
 
 .vercel
 .env*
+!/.env.example
