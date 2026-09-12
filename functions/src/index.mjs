@@ -5,7 +5,7 @@ import { logger } from 'firebase-functions';
 import { z } from 'zod';
 import { dispatch,rateLimit } from './api.mjs';
 import { parse } from './validation.mjs';
-export {deliverNotifications,releaseExpiredHolds} from './jobs.mjs';
+export {deliverNotifications,releaseExpiredHolds,deliverBookingUpdate} from './jobs.mjs';
 
 initializeApp();
 const db=getFirestore();

@@ -8,7 +8,7 @@ import{Tabs,TabsList,TabsTrigger,TabsContent}from'@/components/ui/tabs';
 import{useSalon}from'./provider';
 import{PageHeading,Empty,download}from'./app';
 import{money}from'@/shared/theme';
-import{PresentationApi}from'@/shared/presentation';
+import type {PresentationApi}from'@/shared/presentation';
 import {useLocalPreference} from './use-local-preference';
 export function CustomerExtras(){const{view,api}=useSalon();if(!api.presentation&&(view==='benefits'||view==='inspiration'))return <Empty text="Este salão ainda não disponibilizou este recurso."/>;return view==='benefits'?<Benefits/>:view==='routine'?<Routine/>:view==='favorites'?<Favorites/>:<Inspiration/>;}
 export function QuickCare(){const{go,api}=useSalon();return <div className="quick-care">{([{icon:Heart,title:'Meus favoritos',detail:'Cuidado com conexão',view:'favorites'},{icon:Gift,title:'Clube Bella',detail:'Carinho que volta',view:'benefits'},{icon:CalendarDays,title:'Minha rotina',detail:'Um tempo para você',view:'routine'},{icon:ImageIcon,title:'Inspirações',detail:'Seu próximo look',view:'inspiration'}]as const).filter(x=>api.presentation||!['benefits','inspiration'].includes(x.view)).map(x=><button key={x.view} onClick={()=>go(x.view)}><span><x.icon size={20} strokeWidth={1.5}/></span><div><strong>{x.title}</strong><small>{x.detail}</small></div><ArrowRight size={15}/></button>)}</div>;}

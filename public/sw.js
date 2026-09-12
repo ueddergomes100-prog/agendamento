@@ -1,7 +1,6 @@
-const CACHE_NAME = "maison-bella-pwa-v3";
+const CACHE_NAME = "maison-bella-pwa-v4";
 const APP_SHELL = [
   "/",
-  "/?mode=demo",
   "/site.webmanifest",
   "/icons/favicon-16.png",
   "/icons/favicon-32.png",

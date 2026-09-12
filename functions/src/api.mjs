@@ -1,9 +1,11 @@
 import { randomUUID,createHash } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
+import {getAuth} from 'firebase-admin/auth';
 import { z } from 'zod';
 import { id,text,optionalText,date,parse,fail,requireUser,authorize } from './validation.mjs';
 import { hold,changeAppointment,slots,block } from './booking.mjs';
 import { provision,editCatalog } from './catalog.mjs';
+import {registerDevice,unregisterDevice,testPush} from './devices.mjs';
 
 const lowerRole={OWNER:'owner',MANAGER:'manager',RECEPTIONIST:'reception',PROFESSIONAL:'professional',FINANCE:'finance'};
 const rows=snap=>snap.docs.map(x=>({id:x.id,...x.data()}));
@@ -27,6 +29,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     await db.doc(`users/${uid}`).set({id:uid,...profile,updatedAt:Timestamp.now()},{merge:true}); return {id:uid,...profile};
   }
   if(action==='my_salons') { requireUser(uid); return rows(await db.collection(`users/${uid}/salons`).limit(100).get()); }
+  if(action==='unregister_device')return unregisterDevice(db,requireUser(uid),p);
   if(action==='delete_request') { requireUser(uid); await db.doc(`privacyRequests/${uid}`).set({userId:uid,status:'PENDING',requestedAt:Timestamp.now(),type:'DELETE_ACCOUNT'},{merge:true}); return {message:'Solicitação de exclusão registrada. O suporte analisará os registros vinculados à conta.'}; }
   if(action==='platform_summary') {
     requireUser(uid);if(claims.superAdmin!==true) fail('Acesso restrito à plataforma.','permission-denied');
@@ -58,19 +61,22 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     return {appointments:rows(apps).filter(a=>a.status!=='HOLD'),clients:clients?rows(clients):[],blocks:rows(blocks),audit:audit?rows(audit):[],metrics:metrics.data()||{completed:0,revenueCents:0},role:lowerRole[member.role],limited:true};
   }
   if(action==='admin_member') {
+    authorize(member,['OWNER']);
+    if(p.email){const email=parse(z.string().trim().email().max(254),p.email);try{p={...p,user_id:(await getAuth().getUserByEmail(email)).uid};}catch(e){if(e.code==='auth/user-not-found')fail('Esta pessoa precisa criar uma conta no aplicativo primeiro.','not-found');throw e;}}
     const data=parse(z.object({user_id:id,role:z.enum(['MANAGER','RECEPTIONIST','PROFESSIONAL','FINANCE']),professional_id:id.optional(),status:z.enum(['ACTIVE','INACTIVE']).default('ACTIVE')}),p);
     return db.runTransaction(async tx=>{
-      const [owner,target,pro,existing]=await tx.getAll(salon.collection('members').doc(uid),db.doc(`users/${data.user_id}`),salon.collection('professionals').doc(data.professional_id||'_none'),salon.collection('members').doc(data.user_id));
+      const [owner,target,pro,existing,salonSnapshot]=await tx.getAll(salon.collection('members').doc(uid),db.doc(`users/${data.user_id}`),salon.collection('professionals').doc(data.professional_id||'_none'),salon.collection('members').doc(data.user_id),salon);
       authorize(owner.data(),['OWNER']);
       if(!target.exists||data.user_id===uid||existing.data()?.role==='OWNER') fail('Usuário inválido para esta alteração.');
       if(data.role==='PROFESSIONAL'&&!pro.exists) fail('Vincule uma profissional deste salão.');
       tx.set(salon.collection('members').doc(data.user_id),{salonId,userId:data.user_id,role:data.role,status:data.status,professionalId:data.professional_id||null,updatedAt:Timestamp.now()});
-      tx.set(db.doc(`users/${data.user_id}/salons/${salonId}`),{salonId,role:data.role,updatedAt:Timestamp.now()},{merge:true});
+      const salonData=salonSnapshot.data();
+      tx.set(db.doc(`users/${data.user_id}/salons/${salonId}`),{salonId,name:salonData.name,slug:salonData.slug,role:data.role,updatedAt:Timestamp.now()},{merge:true});
       tx.create(salon.collection('auditLogs').doc(randomUUID()),{salonId,actorId:uid,action:'member_changed',targetId:data.user_id,created_at:new Date().toISOString()});return {ok:true};
     });
   }
   const customerRef=db.doc(`users/${uid}/salons/${salonId}`);
-  if(['favorites','favorite','preferences','notifications','read_notifications','waitlist','export','register_device'].includes(action)) {
+  if(['favorites','favorite','preferences','notifications','read_notifications','waitlist','export','register_device','test_push'].includes(action)) {
     const publicSalon=(await db.doc(`publicSalons/${salonId}`).get()).data();
     if(!publicSalon?.published&&member?.status!=='ACTIVE') fail('Salão indisponível.');
     const customer=(await customerRef.get()).data()||defaultCustomer;
@@ -85,7 +91,8 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     if(action==='read_notifications') { const notices=await db.collection(`users/${uid}/notifications`).where('salon_id','==',salonId).orderBy('created_at','desc').limit(50).get();const batch=db.batch();for(const n of notices.docs)batch.update(n.ref,{read_at:new Date().toISOString()});await batch.commit();return {ok:true}; }
     if(action==='waitlist') { const w=parse(z.object({service_id:id,date}),p);if(!publicSalon.catalog.services.some(x=>x.id===w.service_id))fail('Serviço inválido.');const key=createHash('sha256').update(`${uid}:${w.service_id}:${w.date}`).digest('hex');await salon.collection('waitlist').doc(key).set({salonId,clientId:uid,...w,status:'WAITING',createdAt:Timestamp.now()});return {ok:true}; }
     if(action==='export') return {profile:(await db.doc(`users/${uid}`).get()).data(),appointments:rows(await salon.collection('appointments').where('client_id','==',uid).orderBy('starts_at').limit(100).get()),preferences:customer.preferences||defaultPrefs,favorites:customer.favorites||[],scope:'Este salão; até 100 agendamentos. Solicite exportação integral ao suporte.'};
-    if(action==='register_device') { const d=parse(z.object({token:text(4096),platform:z.enum(['WEB','ANDROID','IOS'])}),p);const deviceId=createHash('sha256').update(d.token).digest('hex');await db.doc(`users/${uid}/devices/${deviceId}`).set({...d,active:true,lastUsedAt:Timestamp.now()},{merge:true});return {ok:true}; }
+    if(action==='register_device')return registerDevice(db,uid,p);
+    if(action==='test_push') {if(!customer.preferences?.push)fail('Ative os lembretes deste salão antes de testar.','failed-precondition');return testPush(db,uid,p,publicSalon.slug);}
   }
   if(['campaigns','coupons','save_campaign','save_coupon'].includes(action)) {
     authorize(member,['OWNER','MANAGER']);
@@ -99,5 +106,5 @@ export async function dispatch(db,uid,action,p={},claims={}) {
 export async function rateLimit(db,uid,action) {
   if(!uid)return; // Public callables are still protected by App Check and instance limits.
   const minute=Math.floor(Date.now()/60000),key=createHash('sha256').update(`${uid}:${action}:${minute}`).digest('hex');
-  await db.runTransaction(async tx=>{const ref=db.doc(`rateLimits/${key}`),snap=await tx.get(ref),count=snap.data()?.count||0,limit=['hold','provision_salon','admin_block'].includes(action)?10:120;if(count>=limit)fail('Muitas tentativas. Aguarde um minuto.','resource-exhausted');tx.set(ref,{count:count+1,expiresAt:Timestamp.fromMillis((minute+2)*60000)});});
+  await db.runTransaction(async tx=>{const ref=db.doc(`rateLimits/${key}`),snap=await tx.get(ref),count=snap.data()?.count||0,limit=action==='test_push'?3:['hold','provision_salon','admin_block'].includes(action)?10:120;if(count>=limit)fail('Muitas tentativas. Aguarde um minuto.','resource-exhausted');tx.set(ref,{count:count+1,expiresAt:Timestamp.fromMillis((minute+2)*60000)});});
 }

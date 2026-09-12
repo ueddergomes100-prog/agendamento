@@ -12,14 +12,14 @@ Projeto único: `agendamento-salao-bfe26`. Região do banco e das funções: `so
 - Holds de cinco minutos; confirmação; cancelamento; reagendamento atômico; check-in; conclusão; avaliação; bloqueios; antecedência; janela futura; jornada; intervalos; preço e duração calculados no servidor.
 - Perfil, favoritos por salão, preferências/consentimentos, notificações internas, lista de espera, solicitação de exclusão e exportação limitada dos registros do salão atual.
 - Agenda Business limitada por data e por papel; profissional não recebe o CRM. Metricas de conclusão agregadas por dia e auditoria privada.
-- Fila de push FCM e lembretes de 24h/2h, respeitando consentimento. Worker e limpeza de holds via Scheduler. Entrega externa ainda precisa ser ativada e testada com dispositivo real.
+- Push FCM com chave VAPID, registro/renovação por aparelho, retirada no logout, transferência de titularidade ao trocar contas e botão de teste restrito ao próprio aparelho. Worker incluído no build da Vercel, gatilho imediato para alterações e lembretes de 24h/2h pelo Scheduler, respeitando consentimento. Recebimento precisa ser conferido no celular real.
 - PWA não armazena respostas do Firebase/API no cache de assets.
 
 ## Modelo de dados
 
 `salons/{salonId}` contém owner/estado/plano. Subcoleções: members, professionals, services, units, branding, settings, policies, categories, features, appointments, appointmentHolds, scheduleDays, clients, blocks, auditLogs, metrics, outbox e waitlist.
 
-`users/{uid}` guarda perfil. Subcoleções: salons (favoritos e consentimentos por salão), notifications, devices, provisionRequests e limits.
+`users/{uid}` guarda perfil. Subcoleções: salons (favoritos e consentimentos por salão), notifications, devices, provisionRequests e limits. `pushDevices/{sha256(token)}` é um registro privado de titularidade para impedir que o mesmo token continue associado a contas diferentes.
 
 `publicSalons/{salonId}` contém apenas dados publicáveis e um catálogo limitado; `salonSlugs/{slug}` resolve o tenant. Não contém clientes, tokens, pagamentos ou agenda detalhada. `privacyRequests` é privado. `rateLimits` é privado e expira por TTL. `plans` e `platformSettings` estão reservados na política de acesso.
 
@@ -31,17 +31,18 @@ Cada `scheduleDays/{professionalId}_{YYYY-MM-DD}` guarda intervalos compactos de
 
 Expiração é revalidada com o relógio do servidor. TTL apenas remove lixo; não determina disponibilidade. Reagendamento lê os dias de origem e destino antes de gravar, mantém o horário anterior se o destino conflita e libera a origem na mesma transação. Coleções e catálogo têm limites explícitos para não atingir 1 MiB por documento. Mudanças de preço futuras não alteram o valor já reservado.
 
-## Estado da configuração externa em 11/09/2026
+## Estado da configuração externa
 
 - App web `Maison Bella Web` registrado.
 - Firestore existente em São Paulo.
 - Authentication inicializado; e-mail/senha habilitados.
 - `agendamento-taupe-mu.vercel.app` autorizado no Authentication.
 - Firestore Rules publicadas e compiladas com sucesso.
-- Blaze ativo e confirmado pela API. As três Functions (`salonApi`, `deliverNotifications`, `releaseExpiredHolds`) estão ativas em São Paulo, com dois jobs Scheduler habilitados. Os oito índices compostos estão prontos; as políticas TTL foram enviadas.
+- Blaze ativo e confirmado pela API. Functions em São Paulo, com dois jobs Scheduler habilitados. Os oito índices compostos estão prontos; as políticas TTL foram enviadas. `deliverBookingUpdate` complementa o Scheduler com entrega imediata de eventos vencidos na criação do outbox.
 - Bucket `agendamento-salao-bfe26.firebasestorage.app` criado em São Paulo e regras publicadas. O agente do Storage recebeu o papel específico de consulta ao Firestore usado pelas regras.
 - App Check com reCAPTCHA Enterprise, domínio de produção autorizado e tokens de uma hora. Verificação obrigatória na callable, no Firestore e no Storage. O agente do App Check possui seu papel de serviço específico.
-- Vercel configurada para abrir o modo real por padrão. A demonstração permanece em `/?mode=demo`. O PWA inicia em `/`; o `id` original do manifesto foi mantido para preservar a identidade das instalações existentes.
+- A interface usa Firebase e não oferece mais modo de demonstração. Links antigos com `mode=demo` retornam à entrada real. O PWA inicia em `/`; o `id` original do manifesto foi mantido para preservar a identidade das instalações existentes.
+- APIs FCM e FCM Registration habilitadas; chave VAPID pública gerada no Console Firebase e incluída em `shared/push.ts`. A chave privada permanece no Firebase.
 - Artifact Registry remove imagens de builds com mais de sete dias para limitar acúmulo de armazenamento.
 - Pagamento e WhatsApp ficam pendentes por decisão do usuário. Sinal maior que zero bloqueia confirmação até existir gateway; não há aprovação fictícia.
 
@@ -58,16 +59,16 @@ npm run build:vercel
 
 O primeiro comando inicia emulador do projeto fictício `demo-salon`. Testes recusam execução sem `FIRESTORE_EMULATOR_HOST`; não gravam no projeto real. Cobrem isolamento de tenants/usuários, regras de leitura e escrita, membros revogados, disputa de reservas sobrepostas, limpeza, holds expirados, provisionamento idempotente, políticas, bloqueios e reagendamento atômico.
 
-Para testar a interface: inicie `npm run firebase:emulators`, defina `VITE_FIREBASE_EMULATORS=true` somente no processo local e inicie Vite. Acesse `/?mode=live`. O frontend recusa usar emuladores fora de localhost/127.0.0.1. `/?mode=demo` mantém a apresentação original. A criação de usuários pelos emuladores não envia e-mails reais.
+Para testar a interface: inicie `npm run firebase:emulators`, defina `VITE_FIREBASE_EMULATORS=true` somente no processo local e inicie Vite. Acesse `/`. O frontend recusa usar emuladores fora de localhost/127.0.0.1. A criação de usuários pelos emuladores não envia e-mails reais. O push real usa o build publicado com App Check, sem tokens de debug.
 
 ## Publicação após as dependências externas
 
 1. O proprietário ativa Blaze e configura orçamento/alertas no Google Cloud.
 2. Registrar o app no App Check com reCAPTCHA Enterprise do domínio. Habilitar a API App Check e a identidade de serviço. Configurar a chave pública em `VITE_FIREBASE_APP_CHECK_SITE_KEY`.
 3. Inicializar bucket Storage e publicar `npm run firebase:deploy`. Instalar índices e TTL com o arquivo versionado; aguardar índices prontos.
-4. Configurar `VITE_FIREBASE_ENABLED=true` na Vercel apenas após validar as callables e permissões em produção. Nenhuma service account ou segredo entra no build web.
+4. Publicar o frontend com `npm run build:vercel`, incluindo o service worker FCM. Nenhuma service account ou segredo entra no build web.
 5. Confirmar no dispositivo: cadastro, criação de salão, upload, reserva em duas contas, reabertura da agenda e regra de cancelamento. Só então habilitar operação real para clientes.
-6. FCM: obter chave VAPID, configurar registro/renovação de devices e service worker de mensagens, habilitar push com consentimento explícito e testar entrega. Os workers estão preparados, mas não houve envio real validado.
+6. FCM: no perfil, ativar notificações e enviar um teste; conferir também com o app em segundo plano. No iPhone/iPad, requer iOS 16.4+ e instalação na Tela de Início. Permissão deve ser concedida pelo próprio usuário. A aceitação do envio pelo FCM não comprova recebimento pelo sistema operacional; não houve homologação em celular conectado neste ambiente.
 
 ## Limites e trabalho restante da especificação completa
 
@@ -77,6 +78,6 @@ Esta entrega é o núcleo Firebase de agendamento web/PWA, não toda a plataform
 
 Ainda pendentes: fluxo nativo completo Expo (o mobile existente continua scaffold), Apple/Google/telefone completos na UI e consoles; App Check nativo, FCM no dispositivo; recursos compartilhados entre profissionais, combos, deslocamento, múltiplas unidades gerenciáveis, agenda semanal/drag-and-drop, paginação de todo histórico/CRM, Salon Builder com tokens avançados e ordenação de módulos; planos/entitlements comerciais, painel visual Super Admin, avaliações agregadas, atendimento da lista de espera, exclusão/exportação integral com retenção, Analytics/Crashlytics/Performance e Remote Config.
 
-Pagamentos, Pix, split, webhook, estorno e WhatsApp oficial aguardam provedores. Benefícios e portfólio ilustrativos ficam restritos ao modo de demonstração. As filas registram estado real; criar uma notificação interna não comprova envio externo. Jobs têm entrega pelo menos uma vez; tags estáveis reduzem duplicações em retries, sem prometer exatamente uma entrega.
+Pagamentos, Pix, split, webhook, estorno e WhatsApp oficial ficam para a última etapa. O adaptador e as fixtures de apresentação permanecem apenas para testes legados, sem entrada no aplicativo publicado. Os registros temporários conhecidos de validação, suas subcoleções e a imagem de teste foram removidos com verificação. As filas registram estado real; criar uma notificação interna não comprova envio externo. Jobs têm entrega pelo menos uma vez; tags estáveis reduzem duplicações em retries, sem prometer exatamente uma entrega.
 
 Referências oficiais: [Cloud Functions callable](https://firebase.google.com/docs/functions/callable), [App Check](https://firebase.google.com/docs/app-check/cloud-functions), [testes de Rules](https://firebase.google.com/docs/firestore/security/test-rules-emulator).

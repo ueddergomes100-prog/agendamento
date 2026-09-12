@@ -1,61 +1,36 @@
-# Maison Bella — plataforma Firebase para salões
+# Maison Bella — agendamento web/PWA
 
-Experiência web responsiva com modo de demonstração e modo Firebase. O modo de demonstração usa dados fictícios neste navegador; o modo Firebase usa Authentication, Firestore, Storage e Cloud Functions do projeto `agendamento-salao-bfe26`.
+Aplicação responsiva conectada ao Firebase (`agendamento-salao-bfe26`), publicada em https://agendamento-taupe-mu.vercel.app/. A entrada usa contas e salões reais. O seletor de demonstração foi removido; links antigos com `mode=demo` retornam à entrada real. Dados legados de apresentação são limpos do navegador sem apagar sessões ou preferências reais.
 
-## Iniciar
+## Testar o uso
 
-Requer Node.js 22+ para as Functions e Java 21+ para o Firebase Emulator Suite. Em `H:\app agendamento\app agendamento`:
+1. Crie sua conta, cadastre o salão e configure profissionais, serviços, horários e políticas.
+2. Mantenha o sinal em zero enquanto o gateway está pendente; use pagamento no salão.
+3. Publique o salão e abra seu link em outra conta para testar reserva, reagendamento e cancelamento. Os dados cadastrados nesse fluxo são reais e persistentes.
+4. Para dar acesso à equipe, a pessoa precisa criar uma conta primeiro. A proprietária pode vinculá-la pelo e-mail na gestão de acessos.
+5. No perfil do salão, toque em **Ativar notificações** e permita os alertas. Depois use **Enviar notificação de teste**. A autorização é individual por aparelho.
+6. No iPhone/iPad com iOS 16.4+, adicione o site à Tela de Início pelo menu Compartilhar e abra pelo ícone antes de ativar o push. No Android, instale pelo menu do navegador. Teste também com o app em segundo plano.
 
-```powershell
-npm install # somente se as dependências não estiverem instaladas
-npm run dev -- --port 3000
-```
+FCM registra o aparelho, renova seu token ao reabrir e remove o registro no logout. Confirmações/alterações usam um gatilho Firestore; lembretes de 24h/2h passam pelo Scheduler a cada cinco minutos. Permissões, conexão e configurações do sistema afetam o recebimento. Aceitação pelo FCM não comprova entrega no aparelho.
 
-Abra o endereço exibido pelo servidor, normalmente http://localhost:3000/?mode=demo.
+## Desenvolvimento e validação
 
-## Roteiro de apresentação
+Requisitos: Node 22+, Java 21+ para emuladores, `npm ci` na raiz e `npm ci --prefix functions`.
 
-1. **Cliente:** abra a home e escolha **Agendar meu momento**. Selecione serviço, extras, profissional, data e horário. Aceite as políticas e confirme. Pix/cartão são explicitamente simulados; pagamento no salão também está disponível.
-2. **Confirmação:** adicione o arquivo `.ics` ao calendário ou compartilhe os detalhes pelo menu do dispositivo. Se o compartilhamento nativo estiver indisponível, copie a confirmação.
-3. **Agenda:** abra os detalhes, reagende ou cancele uma reserva dentro do prazo. O horário original permanece quando a nova escolha conflita. Check-in fica disponível no dia da visita. O histórico permite avaliar um atendimento concluído.
-4. **Relacionamento:** salve profissionais, ajuste a frequência da rotina e guarde inspirações. Rotinas, inspirações e benefícios ficam separados por cliente e salão neste dispositivo.
-5. **Gestão:** use o botão **Apresentação**, no canto inferior, para alternar para **Proprietária**. Explore agenda, clientes, equipe, serviços, resultados e identidade. A área **Profissional** oferece a visão dos atendimentos da profissional.
-6. **White-label:** mude o preset em **Identidade**, aplique e volte para a experiência da cliente. Também é possível escolher o Atelier Lavender pelo seletor de salão. Experimente o modo escuro.
-
-Use **Apresentação → Recomeçar a demonstração** para restaurar os registros e as preferências demonstrativas. Navegação por `?view=agenda`, `?view=services` etc. pode ser atualizada ou percorrida com voltar/avançar do navegador.
-
-## Validação
-
-```powershell
+```sh
 npm run typecheck
 npm test
-npm run build
+npm run test:firebase
+npm run build:vercel
+npm run preview:vercel
 ```
 
-Os testes cobrem o núcleo Firebase no emulador (multi-tenancy, regras, holds, concorrência, expiração, bloqueios, políticas, reagendamento, membros revogados e preferências), além do domínio legado e do adaptador de apresentação. Não substituem homologação visual em dispositivos ou testes de produção.
+Para desenvolvimento local, inicie `npm run firebase:emulators`, configure `VITE_FIREBASE_EMULATORS=true` no processo local e execute `npm run dev -- --port 3000`. Sem emuladores, configure a chave pública Enterprise de um domínio autorizado. Nunca use credenciais administrativas em variáveis `VITE_`.
 
-## Limites da entrega
+Os testes Firebase usam somente `demo-salon` no emulador: isolamento, regras, concorrência, políticas, acessos e titularidade dos aparelhos push. Não substituem a validação em celulares reais. O service worker com FCM é gerado por `build:vercel`; o servidor de desenvolvimento usa o worker básico de cache.
 
-- **Web:** demonstração navegável com dados locais. Disponibilidade demonstrativa não deve ser usada para receber clientes reais ou conciliar reservas entre dispositivos.
-- **Produção:** o domínio Vercel usa Firebase por padrão, com `VITE_FIREBASE_ENABLED=true`. `?mode=live` também seleciona Firebase explicitamente; `?mode=demo` sempre força a demonstração.
-- **Pagamentos e WhatsApp:** ficam pendentes de provedor e homologação, conforme decisão atual. Serviços com sinal não são confirmados sem gateway; nenhuma mensagem externa é declarada como enviada.
-- **iOS/Android:** a pasta `mobile/` ainda contém a base Expo inicial. Esta entrega concentra o front-end web responsivo; não é um aplicativo nativo concluído nem publicado nas lojas.
-- **Publicação Sites:** o projeto referenciado em `.openai/hosting.json` não foi encontrado na conta conectada. O vínculo foi preservado; a versão local funciona independentemente dessa publicação.
+## Publicação e escopo
 
-Consulte `docs/ARCHITECTURE.md` para a arquitetura planejada. Suas descrições de componentes futuros não devem ser interpretadas como comprovação de que integrações ou o app nativo já estejam implementados.
+GitHub: https://github.com/ueddergomes100-prog/agendamento. A Vercel publica `dist-vercel` usando `npm run build:vercel`. A chave pública Enterprise está em `VITE_FIREBASE_APP_CHECK_SITE_KEY`; a configuração Firebase e a chave pública VAPID estão versionadas. Consulte `docs/FIREBASE.md` para infraestrutura e limites.
 
-## GitHub e Vercel
-
-Repositório: https://github.com/ueddergomes100-prog/agendamento
-
-A configuração `vercel.json` publica a mesma experiência React como aplicação estática Vite, sem depender do runtime Cloudflare/Sites. Os comandos locais originais permanecem disponíveis.
-
-- Instalação: `npm ci`
-- Build da Vercel: `npm run build:vercel`
-- Diretório publicado: `dist-vercel`
-- Teste local do build: `npm run preview:vercel`
-- Node.js: 24.x
-
-Na ausência de `VITE_FIREBASE_ENABLED=true`, uma nova instalação abre em modo demonstrativo. A Vercel deste projeto já possui `VITE_FIREBASE_ENABLED=true` e `VITE_FIREBASE_APP_CHECK_SITE_KEY` (chave pública do reCAPTCHA Enterprise). As Functions, regras, índices, Storage e App Check foram publicados. A configuração pública do Firebase está versionada e não substitui regras, Authentication ou Functions. Nunca publique credenciais administrativas. Consulte `docs/FIREBASE.md` para a validação e as integrações ainda pendentes.
-
-A pasta `mobile/` e a API Express de desenvolvimento não são implantadas na Vercel. A integração Git permite republicar o front-end após novos commits na branch `main`.
+WhatsApp oficial e gateway de pagamento ficam para a última etapa. Esta entrega é web/PWA instalável; `mobile/` permanece uma base Expo, sem publicação nativa nas lojas. A especificação completa e os componentes futuros em `docs/ARCHITECTURE.md` não representam funcionalidades já entregues.

@@ -4,6 +4,7 @@ import { initializeApp,deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { DateTime } from 'luxon';
 import { dispatch } from '../src/api.mjs';
+import {testPush} from '../src/devices.mjs';
 
 if(!process.env.FIRESTORE_EMULATOR_HOST)throw new Error('Run these tests only with the Firestore emulator.');
 const app=initializeApp({projectId:'demo-salon'},'booking-tests'),db=getFirestore(app);
@@ -96,4 +97,30 @@ test('revoking a staff membership immediately removes business privileges',async
   await assert.rejects(rpc(attacker,'admin_branding',{}),e=>e.code==='permission-denied');
   await rpc(uid,'admin_member',{user_id:attacker,role:'PROFESSIONAL',professional_id:pro,status:'INACTIVE'});
   await assert.rejects(rpc(attacker,'admin_summary'),e=>e.code==='permission-denied');
+});
+
+test('push registration requires consent and transfers ownership on shared devices',async()=>{
+ const p={token:'emulator-only-token',platform:'WEB',consent:true};
+ await assert.rejects(rpc(client,'register_device',{...p,consent:false}));
+ const {device_id}=await rpc(client,'register_device',p);
+ assert.equal((await db.doc(`users/${client}/devices/${device_id}`).get()).data().active,true);
+ await rpc(attacker,'register_device',p);
+ assert.equal((await db.doc(`users/${client}/devices/${device_id}`).get()).exists,false);
+ assert.equal((await db.doc(`pushDevices/${device_id}`).get()).data().userId,attacker);
+ await rpc(client,'unregister_device',{device_id});
+ assert.equal((await db.doc(`pushDevices/${device_id}`).get()).data().userId,attacker);
+ await rpc(attacker,'unregister_device',{device_id});
+ assert.equal((await db.doc(`pushDevices/${device_id}`).get()).exists,false);
+});
+
+test('push test cannot target another user and invalid tokens are deactivated',async()=>{
+ const {device_id}=await rpc(client,'register_device',{token:'emulator-test-target',platform:'WEB',consent:true});
+ await assert.rejects(rpc(client,'test_push',{device_id}),e=>e.code==='failed-precondition');
+ const sent=[];const sender=async m=>sent.push(m);
+ await assert.rejects(testPush(db,attacker,{device_id},salon.slug,sender),e=>e.code==='failed-precondition');
+ assert.equal(sent.length,0);
+ await testPush(db,client,{device_id,token:'injected-recipient'},salon.slug,sender);
+ assert.equal(sent[0].token,'emulator-test-target');assert.match(sent[0].webpush.fcmOptions.link,/view=profile/);
+ await assert.rejects(testPush(db,client,{device_id},salon.slug,async()=>{throw Object.assign(new Error('Expired'),{code:'messaging/registration-token-not-registered'});}),e=>e.code==='failed-precondition');
+ assert.equal((await db.doc(`users/${client}/devices/${device_id}`).get()).data().active,false);
 });

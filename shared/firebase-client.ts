@@ -16,6 +16,7 @@ export class FirebaseSalonApi extends SalonApi {
   readonly functions=getFunctions(this.app,'southamerica-east1');
   readonly storage=getStorage(this.app);
   private currentSalon?:string;
+  get firebaseApp(){return this.app;}
   constructor(){
     super();
     if(!initialized){
@@ -47,7 +48,7 @@ export class FirebaseSalonApi extends SalonApi {
   async register(email:string,password:string,name:string,phone:string){try{const result=await createUserWithEmailAndPassword(this.auth,email,password);await updateProfile(result.user,{displayName:name});await this.syncSession();await this.rpc('save_profile',{name,phone});return this.session;}catch(e){throw this.friendly(e);}}
   async googleLogin(){try{await signInWithPopup(this.auth,new GoogleAuthProvider());return this.syncSession();}catch(e){throw this.friendly(e);}}
   async resetPassword(email:string){try{await sendPasswordResetEmail(this.auth,email);}catch(e){throw this.friendly(e);}}
-  async logout(){await signOut(this.auth);this.session=null;}
+  async logout(){const {disablePush}=await import('./push');await disablePush(this);await signOut(this.auth);this.session=null;}
   watchAppointments(salonId:string,callback:()=>void,onError:(error:Error)=>void){
     if(!this.auth.currentUser)return()=>{};
     const q=query(collection(this.db,`salons/${salonId}/appointments`),where('client_id','==',this.auth.currentUser.uid),orderBy('starts_at','asc'),limit(100));
