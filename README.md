@@ -11,6 +11,14 @@ Aplicação responsiva conectada ao Firebase (`agendamento-salao-bfe26`), public
 5. No perfil do salão, toque em **Ativar notificações** e permita os alertas. Depois use **Enviar notificação de teste**. A autorização é individual por aparelho.
 6. No iPhone/iPad com iOS 16.4+, adicione o site à Tela de Início pelo menu Compartilhar e abra pelo ícone antes de ativar o push. No Android, instale pelo menu do navegador. Teste também com o app em segundo plano.
 
+### Roteiro de apresentação
+
+Na área do cliente, a demonstração cobre descoberta do salão, cadastro/login, escolha de unidade, serviço e profissional, disponibilidade por fuso horário, reserva, reagendamento, cancelamento, lista de espera, favoritos, histórico, rotina de cuidados, perfil e notificações push.
+
+Na área administrativa, a proprietária ou a equipe autorizada pode demonstrar agenda com filtros, bloqueio de horários, atendimento de recepção com cliente convidado, clientes e histórico, serviços, categorias, adicionais, profissionais, acessos da equipe, unidades, horários, regras de reserva, identidade visual (logo, capa, cores, fonte e modo escuro), textos do salão, publicação, link/QR Code e relatórios com exportação CSV.
+
+As alterações de configuração são persistidas no salão selecionado e respeitam o papel de cada membro. WhatsApp oficial e gateway de pagamento permanecem sinalizados na tela de integrações para a etapa final.
+
 FCM registra o aparelho, renova seu token ao reabrir e remove o registro no logout. Confirmações/alterações usam um gatilho Firestore; lembretes de 24h/2h passam pelo Scheduler a cada cinco minutos. Permissões, conexão e configurações do sistema afetam o recebimento. Aceitação pelo FCM não comprova entrega no aparelho.
 
 ## Desenvolvimento e validação
