@@ -15,7 +15,7 @@
     "format": "oxfmt",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/domain.test.mjs && node --import ./tests/register-typescript.mjs --test tests/presentation.test.mjs",
-    "test:firebase": "firebase emulators:exec --project demo-salon --only firestore \"node --test functions/test/booking.test.mjs tests/firebase-rules.test.mjs\"",
+    "test:firebase": "firebase emulators:exec --project demo-salon --only firestore \"node --test functions/test/booking.test.mjs functions/test/business.test.mjs tests/firebase-rules.test.mjs\"",
     "firebase:emulators": "firebase emulators:start --project demo-salon --only auth,firestore,functions,storage",
     "firebase:deploy": "firebase deploy --project agendamento-salao-bfe26 --only functions,firestore,storage"
   },

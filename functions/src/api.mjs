@@ -6,6 +6,7 @@ import { id,text,optionalText,date,parse,fail,requireUser,authorize } from './va
 import { hold,changeAppointment,slots,block } from './booking.mjs';
 import { provision,editCatalog } from './catalog.mjs';
 import {registerDevice,unregisterDevice,testPush} from './devices.mjs';
+import {business,businessActions} from './business.mjs';
 
 const lowerRole={OWNER:'owner',MANAGER:'manager',RECEPTIONIST:'reception',PROFESSIONAL:'professional',FINANCE:'finance'};
 const rows=snap=>snap.docs.map(x=>({id:x.id,...x.data()}));
@@ -18,7 +19,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     const slugSnap=await db.doc(`salonSlugs/${slug}`).get();
     if(!slugSnap.exists) fail('Salão não encontrado. Confira o link ou cadastre seu salão.','not-found');
     const salonId=slugSnap.data().salonId,snapshot=await db.doc(`publicSalons/${salonId}`).get(),data=snapshot.data();
-    if(!data?.published) { const member=uid?(await db.doc(`salons/${salonId}/members/${uid}`).get()).data():null; authorize(member,['OWNER','MANAGER']); }
+    if(!data?.published) { const member=uid?(await db.doc(`salons/${salonId}/members/${uid}`).get()).data():null;authorize(member,['OWNER','MANAGER']); }
     return {...data.catalog,published:data.published,features:data.features};
   }
   if(action==='salons') return rows(await db.collection('publicSalons').where('published','==',true).orderBy('name').limit(50).get()).map(x=>({...x.catalog.salon,branding:x.catalog.branding}));
@@ -28,7 +29,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     const profile=parse(z.object({name:text(100),phone:z.string().trim().min(8).max(30),birthday:z.union([date,z.literal('')]).default(''),marketing:z.boolean().default(false)}),p);
     await db.doc(`users/${uid}`).set({id:uid,...profile,updatedAt:Timestamp.now()},{merge:true}); return {id:uid,...profile};
   }
-  if(action==='my_salons') { requireUser(uid); return rows(await db.collection(`users/${uid}/salons`).limit(100).get()); }
+  if(action==='my_salons') { requireUser(uid); const links=rows(await db.collection(`users/${uid}/salons`).limit(100).get());const catalogs=links.length?await db.getAll(...links.map(l=>db.doc(`publicSalons/${l.salonId||l.id}`))):[];return links.map((l,i)=>({...l,name:catalogs[i].data()?.name||l.name,slug:catalogs[i].data()?.slug||l.slug})); }
   if(action==='unregister_device')return unregisterDevice(db,requireUser(uid),p);
   if(action==='delete_request') { requireUser(uid); await db.doc(`privacyRequests/${uid}`).set({userId:uid,status:'PENDING',requestedAt:Timestamp.now(),type:'DELETE_ACCOUNT'},{merge:true}); return {message:'Solicitação de exclusão registrada. O suporte analisará os registros vinculados à conta.'}; }
   if(action==='platform_summary') {
@@ -36,12 +37,13 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     return {salons:rows(await db.collection('salons').orderBy('createdAt','desc').limit(50).get())};
   }
   const salonId=parse(id,p.salon_id),salon=db.doc(`salons/${salonId}`);
-  if(action==='slots') return slots(db,salon,p);
+  if(action==='slots') return slots(db,salon,p,uid);
   requireUser(uid);
   if(action==='hold') return hold(db,salon,uid,p);
+  if(businessActions.includes(action))return business(db,salon,uid,action,p);
   if(['confirm','release_hold','cancel','reschedule','checkin','review','admin_status'].includes(action)) return changeAppointment(db,salon,uid,action,p);
   if(action==='admin_block') return block(db,salon,uid,p);
-  if(['admin_service','admin_professional','admin_branding','admin_rules','publish_salon'].includes(action)) return editCatalog(db,salon,uid,action,p);
+  if(['admin_service','admin_professional','admin_branding','admin_rules','publish_salon','unpublish_salon','admin_info','admin_unit','admin_category','admin_addon','admin_remove'].includes(action)) return editCatalog(db,salon,uid,action,p);
   const member=(await salon.collection('members').doc(uid).get()).data();
   if(action==='me') return {profile:(await db.doc(`users/${uid}`).get()).data()||null,memberships:member?.status==='ACTIVE'?[{salon_id:salonId,role:lowerRole[member.role]}]:[]};
   if(action==='appointments') {
@@ -76,10 +78,12 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     });
   }
   const customerRef=db.doc(`users/${uid}/salons/${salonId}`);
-  if(['favorites','favorite','preferences','notifications','read_notifications','waitlist','export','register_device','test_push'].includes(action)) {
+  if(['favorites','favorite','preferences','notifications','read_notifications','waitlist','export','register_device','test_push','routine','save_routine'].includes(action)) {
     const publicSalon=(await db.doc(`publicSalons/${salonId}`).get()).data();
     if(!publicSalon?.published&&member?.status!=='ACTIVE') fail('Salão indisponível.');
     const customer=(await customerRef.get()).data()||defaultCustomer;
+    if(action==='routine')return customer.routine||{};
+    if(action==='save_routine'){const v=parse(z.object({service_id:id,frequency:z.number().int().min(1).max(365),enabled:z.boolean()}),p);if(!publicSalon.catalog.services.some(s=>s.id===v.service_id))fail('Serviço indisponível.');await db.runTransaction(async tx=>{const current=(await tx.get(customerRef)).data()||{};tx.set(customerRef,{salonId,routine:{...(current.routine||{}),[v.service_id]:{frequency:v.frequency,enabled:v.enabled}}},{merge:true});});return {ok:true};}
     if(action==='favorites') return customer.favorites||[];
     if(action==='favorite') {
       const f=parse(z.object({professional_id:id,enabled:z.boolean()}),p);

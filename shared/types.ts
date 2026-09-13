@@ -1,8 +1,9 @@
 export type Salon={id:string;slug:string;name:string;description:string;branding?:Branding};
-export type Branding={preset:string;primary_color?:string|null;cover_url?:string;logo_url?:string;font_style:string;dark_allowed:boolean};
+export type Branding={preset:string;primary_color?:string|null;secondary_color?:string;accent_color?:string;background_color?:string;cover_url?:string;logo_url?:string;hero_title?:string;hero_subtitle?:string;font_style:string;dark_allowed:boolean};
 export type Service={id:string;salon_id:string;category_id:string;name:string;description:string;image_url?:string;duration_minutes:number;price_cents:number;deposit_cents:number;cleanup_minutes:number};
-export type Professional={id:string;name:string;specialty:string;bio:string;photo_url?:string;rating?:number;review_count:number};
-export type Unit={id:string;name:string;address:string;timezone:string};
+export type Schedule={opens:string;closes:string;weekdays:number[];breaks:{start:string;end:string}[]};
+export type Professional={id:string;name:string;specialty:string;bio:string;photo_url?:string;rating?:number;review_count:number;schedules?:(Schedule&{unit_id:string})[]};
+export type Unit={id:string;name:string;address:string;timezone:string;schedule?:Schedule};
 export type Addon={id:string;service_id:string;name:string;duration_minutes:number;price_cents:number};
 export type Catalog={published?:boolean;features?:Record<string,boolean>;salon:Salon;branding:Branding;units:Unit[];categories:{id:string;name:string}[];services:Service[];professionals:Professional[];service_professionals:{service_id:string;professional_id:string}[];addons:Addon[];settings:{min_notice_minutes:number;max_future_days:number;slot_minutes:number};policies:{cancel_hours:number;reschedule_hours:number}};
 export type Slot={starts_at:string;professional_id:string;professional_name:string};

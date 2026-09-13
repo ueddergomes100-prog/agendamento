@@ -1,0 +1,12 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {useSalon} from './provider';
+import {Empty,PageHeading} from './app';
+type Routine=Record<string,{frequency:number;enabled:boolean}>;
+export function CareRoutine(){
+ const{api,catalog,session,setAuthOpen,book,appointments,notice}=useSalon();const[items,setItems]=useState<Routine>({}),[busy,setBusy]=useState(false);
+ useEffect(()=>{if(session)api.rpc<Routine>('routine',{salon_id:catalog.salon.id}).then(setItems).catch(e=>notice(e.message));},[api,catalog.salon.id,session?.user.id,notice]);
+ const save=async(service_id:string,next:{frequency:number;enabled:boolean})=>{setBusy(true);try{await api.rpc('save_routine',{salon_id:catalog.salon.id,service_id,...next});setItems(v=>({...v,[service_id]:next}));}catch(e){notice((e as Error).message);}finally{setBusy(false);}};
+ if(!session)return <Empty text="Entre para organizar sua rotina de cuidados." action={<button className="btn" onClick={()=>setAuthOpen(true)}>Entrar</button>}/>;
+ return <><PageHeading eyebrow="CUIDADO QUE CONTINUA" title="Minha rotina" text="Escolha a frequência dos seus cuidados. Sua rotina acompanha sua conta em outros aparelhos."/><div className="routine-grid">{catalog.services.map(s=>{const preference=items[s.id]||{frequency:30,enabled:false},last=appointments.filter(a=>a.service_id===s.id&&a.status==='COMPLETED').at(-1),next=last?new Date(Date.parse(last.starts_at)+preference.frequency*86400000).toLocaleDateString('pt-BR',{timeZone:last.timezone}):null;return <section className="panel routine-card" key={s.id}><h3>{s.name}</h3><label className="switch-row">Acompanhar este cuidado<input type="checkbox" checked={preference.enabled} disabled={busy} onChange={e=>save(s.id,{...preference,enabled:e.target.checked})}/></label><label>Repetir a cada<select disabled={busy} value={preference.frequency} onChange={e=>save(s.id,{...preference,frequency:Number(e.target.value)})}>{[7,14,21,30,45,60,90].map(n=><option value={n} key={n}>{n} dias</option>)}</select></label><p>{!preference.enabled?'Rotina pausada':next?'Próximo cuidado sugerido: '+next:'Agende sua primeira visita para iniciar o histórico.'}</p><button className="btn outline" onClick={()=>book({serviceId:s.id})}>Agendar cuidado</button></section>;})}</div>{!catalog.services.length&&<Empty text="Os serviços aparecerão aqui após o cadastro pelo salão."/>}<p className="policy-note">As datas são sugestões baseadas no seu histórico. Reservas e lembretes de agendamento são confirmados separadamente.</p></>;
+}

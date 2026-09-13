@@ -7,6 +7,7 @@ const hours=z.object({opens:clock,closes:clock,weekdays:z.array(z.number().int()
 const initialHours={opens:'09:00',closes:'19:00',weekdays:[1,2,3,4,5,6],breaks:[{start:'12:00',end:'13:00'}]};
 const categories=['Cabelo','Unhas','Sobrancelha','Cílios','Maquiagem','Estética','Massagem','Noivas','Tratamentos','Outros'].map((name,i)=>({id:`category-${i}`,name}));
 const safeImage=z.union([z.literal(''),z.string().url().max(2000).refine(s=>s.startsWith('https://'))]).default('');
+const color=z.union([z.literal(''),z.string().regex(/^#[0-9a-fA-F]{6}$/)]);
 export async function provision(db,uid,payload) {
   const p=parse(z.object({name:text(100),slug:z.string().min(3).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),address:text(250),timezone:z.enum(['America/Sao_Paulo','America/Manaus','America/Recife','America/Fortaleza','America/Belem','America/Rio_Branco','America/Cuiaba']).default('America/Sao_Paulo'),preset:z.enum(presets).default('Rose'),request_id:id}),payload);
   const salonId=randomUUID(),unitId=randomUUID(),requestRef=db.doc(`users/${uid}/provisionRequests/${p.request_id}`);
@@ -66,9 +67,37 @@ export async function editCatalog(db,salon,uid,action,payload) {
       c.professionals=c.professionals.filter(x=>x.id!==proId).concat(value);
       writes.push([salon.collection('professionals').doc(proId),value]); result={id:proId};
     } else if(action==='admin_branding') {
-      const p=parse(z.object({name:text(100),preset:z.enum(presets),primary_color:z.union([z.literal(''),z.string().regex(/^#[0-9a-fA-F]{6}$/)]),font_style:z.enum(['Editorial','Modern']),dark_allowed:z.boolean(),logo_url:safeImage.optional(),cover_url:safeImage.optional()}),payload);
+      const p=parse(z.object({name:text(100),preset:z.enum(presets),primary_color:color,secondary_color:color.optional(),accent_color:color.optional(),background_color:color.optional(),hero_title:optionalText(120).optional(),hero_subtitle:optionalText(300).optional(),font_style:z.enum(['Editorial','Modern']),dark_allowed:z.boolean(),logo_url:safeImage.optional(),cover_url:safeImage.optional()}),payload);
       const {name,...branding}=p; c.salon.name=name;c.branding={...c.branding,...branding};publicData.name=name;
       writes.push([salon.collection('branding').doc('config'),c.branding]);
+    } else if(action==='admin_info') {
+      const p=parse(z.object({description:optionalText(1000)}),payload);c.salon.description=p.description;
+    } else if(action==='admin_unit') {
+      const p=parse(z.object({id:id.optional(),name:text(100),address:text(250),timezone:z.enum(['America/Sao_Paulo','America/Manaus','America/Recife','America/Fortaleza','America/Belem','America/Rio_Branco','America/Cuiaba']),schedule:hours}),payload);
+      if(p.id&&!c.units.some(u=>u.id===p.id))fail('Unidade não encontrada.');
+      if(!p.id&&c.units.length>=10)fail('Limite de dez unidades atingido.');
+      const value={...p,id:p.id||randomUUID()};c.units=c.units.filter(u=>u.id!==value.id).concat(value);writes.push([salon.collection('units').doc(value.id),{...value,salonId:salon.id}]);result={id:value.id};
+    } else if(action==='admin_category') {
+      const p=parse(z.object({id:id.optional(),name:text(60)}),payload);
+      if(p.id&&!c.categories.some(x=>x.id===p.id))fail('Categoria não encontrada.');
+      if(!p.id&&c.categories.length>=50)fail('Limite de categorias atingido.');
+      const value={...p,id:p.id||randomUUID()};c.categories=c.categories.filter(x=>x.id!==value.id).concat(value);writes.push([salon.collection('categories').doc(value.id),{...value,salonId:salon.id}]);result={id:value.id};
+    } else if(action==='admin_addon') {
+      const p=parse(z.object({id:id.optional(),service_id:id,name:text(100),duration_minutes:z.number().int().min(0).max(120),price_cents:money}),payload);
+      if(!c.services.some(x=>x.id===p.service_id))fail('Serviço não encontrado.');
+      if(p.id&&!c.addons.some(x=>x.id===p.id))fail('Extra não encontrado.');
+      if(!p.id&&c.addons.length>=200)fail('Limite de extras atingido.');
+      const value={...p,id:p.id||randomUUID()};c.addons=c.addons.filter(x=>x.id!==value.id).concat(value);writes.push([salon.collection('addons').doc(value.id),{...value,salonId:salon.id}]);result={id:value.id};
+    } else if(action==='admin_remove') {
+      const p=parse(z.object({id,kind:z.enum(['services','professionals','addons','categories'])}),payload);
+      if(!c[p.kind].some(x=>x.id===p.id))fail('Registro não encontrado.');
+      if(p.kind==='categories'&&c.services.some(s=>s.category_id===p.id))fail('Mova os serviços desta categoria antes de removê-la.');
+      // Remove from the booking catalog; existing appointment snapshots remain intact.
+      c[p.kind]=c[p.kind].filter(x=>x.id!==p.id);
+      if(p.kind==='services'){c.service_professionals=c.service_professionals.filter(x=>x.service_id!==p.id);c.addons=c.addons.filter(x=>x.service_id!==p.id);}
+      if(p.kind==='professionals')c.service_professionals=c.service_professionals.filter(x=>x.professional_id!==p.id);
+      tx.delete(salon.collection(p.kind).doc(p.id));
+    } else if(action==='unpublish_salon') {publicData.published=false;
     } else if(action==='admin_rules') {
       const p=parse(z.object({min_notice_minutes:z.number().int().min(0).max(10080),max_future_days:z.number().int().min(1).max(365),cancel_hours:z.number().int().min(0).max(720),reschedule_hours:z.number().int().min(0).max(720)}),payload);
       c.settings={...c.settings,min_notice_minutes:p.min_notice_minutes,max_future_days:p.max_future_days};c.policies={cancel_hours:p.cancel_hours,reschedule_hours:p.reschedule_hours};

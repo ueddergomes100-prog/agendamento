@@ -9,9 +9,10 @@ export const presets={
  Lavender:{primary:'#75618e',secondary:'#ede7f3',accent:'#af82a3',background:'#fbf9fd',surface:'#ffffff',text:'#352d40',muted:'#786c84',border:'#e4dcec'},
 };
 export type ThemeName=keyof typeof presets;
-export function themeFor(preset='Rose',custom?:string|null,dark=false){
+export function themeFor(preset='Rose',custom?:string|null,dark=false,overrides?:{secondary_color?:string;accent_color?:string;background_color?:string}){
  const base=presets[preset as ThemeName]||presets.Rose;
- const palette=dark?{...base,background:'#211d23',surface:'#2d2730',secondary:'#3b303d',text:'#f6edf3',muted:'#c5b5c3',border:'#4b3d4b',primary:'#d5a8bc'}:base;
+ const palette={...(dark?{...base,background:'#211d23',surface:'#2d2730',secondary:'#3b303d',text:'#f6edf3',muted:'#c5b5c3',border:'#4b3d4b',primary:'#d5a8bc'}:base)};
+ if(!dark&&overrides)for(const[key,field]of [['secondary','secondary_color'],['accent','accent_color'],['background','background_color']] as const){const v=overrides[field];if(v&&/^#[0-9a-f]{6}$/i.test(v))palette[key]=v;}
  const primary=custom&&/^#[0-9a-f]{6}$/i.test(custom)?custom:palette.primary;
  const [r,g,b]=[1,3,5].map(i=>parseInt(primary.slice(i,i+2),16)/255).map(x=>x<=0.04045?x/12.92:((x+0.055)/1.055)**2.4);
  const onPrimary=(r*.2126+g*.7152+b*.0722)>.179?'#211a1e':'#ffffff';

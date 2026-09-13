@@ -37,6 +37,7 @@ function audit(tx, salon, uid, appointment, action, eventId = randomUUID()) {
 function notify(tx, db, salon, uid, a, action) {
   const eventId = randomUUID();
   audit(tx,salon,uid,a,action,eventId);
+  if(a.client_id.startsWith('guest-'))return;
   const notice = {id:eventId,salon_id:salon.id,appointment_id:a.id,title:action==='booking_cancelled'?'Horário cancelado':action==='booking_rescheduled'?'Seu novo horário está confirmado':'Seu agendamento foi atualizado',body:`${a.service_name} com ${a.professional_name}.`,created_at:new Date().toISOString()};
   tx.set(db.doc(`users/${a.client_id}/notifications/${eventId}`),notice);
   // External delivery is a separate adapter; creating a notice never claims WhatsApp delivery.
@@ -53,7 +54,7 @@ export async function hold(db, salon, uid, payload) {
   if (holdId.length > 240) fail('Identificador inválido.');
   return db.runTransaction(async tx => {
     const now = Date.now();
-    const [catalogSnap,memberSnap,existing,profile,confirmed] = await tx.getAll(db.doc(`publicSalons/${salon.id}`),salon.collection('members').doc(uid),salon.collection('appointmentHolds').doc(holdId),db.doc(`users/${p.client_user_id||uid}`),salon.collection('appointments').doc(holdId));
+    const [catalogSnap,memberSnap,existing,profile,confirmed] = await tx.getAll(db.doc(`publicSalons/${salon.id}`),salon.collection('members').doc(uid),salon.collection('appointmentHolds').doc(holdId),(p.client_user_id||'').startsWith('guest-')?salon.collection('clients').doc(p.client_user_id):db.doc(`users/${p.client_user_id||uid}`),salon.collection('appointments').doc(holdId));
     const member = row(memberSnap);
     const clientId = p.client_user_id || uid;
     if (clientId !== uid) authorize(member,managers);
@@ -124,7 +125,7 @@ export async function changeAppointment(db,salon,uid,action,payload) {
       a = {...a,status:'CONFIRMED',paymentStatus:'PAY_AT_SALON'};
       appendEntry(tx,oldRef,oldEntries,{...entry,expiresAt:null},now);
       tx.delete(holdRef);
-      tx.set(db.doc(`users/${a.client_id}/salons/${salon.id}`),{salonId:salon.id,name:catalog.salon.name,slug:catalog.salon.slug,lastBooking:a.starts_at,updatedAt:Timestamp.now()},{merge:true});
+      if(!a.client_id.startsWith('guest-'))tx.set(db.doc(`users/${a.client_id}/salons/${salon.id}`),{salonId:salon.id,name:catalog.salon.name,slug:catalog.salon.slug,lastBooking:a.starts_at,updatedAt:Timestamp.now()},{merge:true});
       tx.set(salon.collection('clients').doc(a.client_id),{id:a.client_id,user_id:a.client_id,salonId:salon.id,name:a.client_name,phone:a.client_phone,updatedAt:Timestamp.now()},{merge:true});
     } else if (action === 'release_hold' || action === 'cancel') {
       appendEntry(tx,oldRef,oldEntries,null,now,a.id);
@@ -162,11 +163,13 @@ export async function changeAppointment(db,salon,uid,action,payload) {
   });
 }
 
-export async function slots(db,salon,payload) {
+export async function slots(db,salon,payload,uid) {
   const p = parse(z.object({service_id:id,unit_id:id,professional_id:z.union([id,z.literal('')]).optional(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),addons:z.array(id).max(10).default([])}),payload);
   const doc = await db.doc(`publicSalons/${salon.id}`).get();
   if (!doc.data()?.published) fail('Salão indisponível.');
   const catalog = doc.data().catalog;
+  let ignoreId;
+  if(payload.ignore_id){const key=parse(id,payload.ignore_id);const [appointment,member]=await db.getAll(salon.collection('appointments').doc(key),salon.collection('members').doc(uid||'_anonymous'));if(!appointment.exists)fail('Agendamento não encontrado.');ownAppointment(appointment.data(),uid,member.data());ignoreId=key;}
   const pros = catalog.professionals.filter(pro => (!p.professional_id || pro.id === p.professional_id) && catalog.service_professionals.some(x => x.service_id===p.service_id && x.professional_id===pro.id));
   if (pros.length > 100) fail('Selecione uma profissional.');
   const result = [], now = Date.now();
@@ -178,7 +181,7 @@ export async function slots(db,salon,payload) {
       const start = startDay.plus({minutes:m});
       try {
         const window = scheduleWindow(catalog,pro,unit.id,start.toISO(),duration+service.cleanup_minutes,now);
-        if (!busy(window,days[index].data()?.entries||[],now)) result.push({starts_at:toISO(window.start),professional_id:pro.id,professional_name:pro.name});
+        if (!busy(window,days[index].data()?.entries||[],now,ignoreId)) result.push({starts_at:toISO(window.start),professional_id:pro.id,professional_name:pro.name});
       } catch (e) { if(e.code!=='failed-precondition') throw e; }
     }
   }
@@ -186,21 +189,23 @@ export async function slots(db,salon,payload) {
 }
 
 export async function block(db,salon,uid,payload) {
-  const p=parse(z.object({professional_id:id,starts_at:instant,ends_at:instant,reason:z.string().trim().min(1).max(200),request_id:id}),payload);
+  const local=z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  const p=parse(z.object({professional_id:id,unit_id:id.optional(),starts_at:instant.optional(),ends_at:instant.optional(),local_start:local.optional(),local_end:local.optional(),reason:z.string().trim().min(1).max(200),request_id:id}).refine(v=>(v.starts_at&&v.ends_at)||(v.local_start&&v.local_end)),payload);
   return db.runTransaction(async tx=>{
     const [memberDoc,publicDoc]=await tx.getAll(salon.collection('members').doc(uid),db.doc(`publicSalons/${salon.id}`));
     const member=memberDoc.data(); authorize(member,[...managers,'PROFESSIONAL']);
     if(member.role==='PROFESSIONAL'&&member.professionalId!==p.professional_id) fail('Sem permissão.','permission-denied');
     const c=publicDoc.data()?.catalog,pro=c?.professionals.find(x=>x.id===p.professional_id);
     if(!pro) fail('Profissional inválida.');
-    const zone=c.units[0].timezone,start=DateTime.fromISO(p.starts_at,{zone}),end=DateTime.fromISO(p.ends_at,{zone});
-    if(end<=start||start.toISODate()!==end.toISODate()) fail('Bloqueie um intervalo dentro do mesmo dia.');
+    const unit=p.unit_id?c.units.find(u=>u.id===p.unit_id):c.units[0];if(!unit)fail('Unidade inválida.');
+    const zone=unit.timezone,start=DateTime.fromISO(p.local_start||p.starts_at,{zone}),end=DateTime.fromISO(p.local_end||p.ends_at,{zone});
+    if(!start.isValid||!end.isValid||end<=start||start.toISODate()!==end.toISODate()) fail('Bloqueie um intervalo dentro do mesmo dia.');
     const ref=dayRef(salon,pro.id,start.toISODate()),snapshot=await tx.get(ref),entries=snapshot.data()?.entries||[];
     const entry={id:`block_${uid}_${p.request_id}`,start:start.toMillis(),end:end.toMillis(),expiresAt:null};
     if(entries.some(e=>e.id===entry.id)) return {ok:true};
     if(busy(entry,entries,Date.now())) fail('Já existe uma reserva neste intervalo.');
     appendEntry(tx,ref,entries,entry,Date.now());
-    tx.set(salon.collection('blocks').doc(entry.id),{...p,id:entry.id,salonId:salon.id,createdBy:uid});
+    tx.set(salon.collection('blocks').doc(entry.id),{...p,starts_at:start.toUTC().toISO(),ends_at:end.toUTC().toISO(),timezone:zone,schedule_day:start.toISODate(),id:entry.id,salonId:salon.id,createdBy:uid});
     audit(tx,salon,uid,{id:entry.id},'schedule_blocked'); return {ok:true};
   });
 }
