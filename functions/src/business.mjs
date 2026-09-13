@@ -33,8 +33,8 @@ export async function business(db,salon,uid,action,p){
  });
  authorize(member,reception);
  if(action==='admin_clients'){
-  let q=salon.collection('clients').orderBy('name').orderBy('__name__');
-  if(p.after){const cursor=parse(z.object({name:text(100),id}),p.after);q=q.startAfter(cursor.name,cursor.id);}
+  let q=salon.collection('clients').orderBy('name');
+  if(p.after){const cursor=parse(z.object({name:text(100),id}),p.after);q=q.startAfter(cursor.name);}
   const found=await q.limit(51).get(),items=rows(found).slice(0,50),last=items.at(-1);
   return {items,next:found.size>50?{name:last.name,id:last.id}:null};
  }
