@@ -6,6 +6,7 @@ import {id,text,parse,fail,requireUser,authorize,ownAppointment,activeEntries,ov
 import {asaasClient,requireAsaas,seal,unseal,cents,checkoutUrl} from './asaas-client.mjs';
 import {dayRef} from './booking.mjs';
 import {requireSalonSubscription} from './subscription-access.mjs';
+import {subscriptionPlans,requireSubscriptionPlan} from './subscription-plans.mjs';
 
 const iso=()=>new Date().toISOString();
 const digits=z.string().transform(v=>v.replace(/\D/g,''));
@@ -50,7 +51,7 @@ export async function financialDispatch(db,uid,action,p,c,makeClient=asaasClient
   if(action==='asaas_my_payments'){const list=await salon.collection('payments').where('clientId','==',uid).limit(100).get();return list.docs.map(d=>d.data()).filter(d=>d.environment===c.environment).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));}
   if(action==='asaas_status'){
     const [account,billing,ps,ts]=await Promise.all([accountRef(db,c,salonId).get(),db.doc(`asaasSubscriptions/${c.environment}_${salonId}`).get(),salon.collection('payments').orderBy('updatedAt','desc').limit(30).get(),db.collection('asaasPayouts').where('salonId','==',salonId).limit(30).get()]);
-    const a=account.data();return {configured:!!(c.enabled&&c.apiKey),environment:c.environment,monthlyCents:c.monthlyCents||null,account:a?{id:a.id,status:a.status,payout:a.payout||null,ownerName:a.ownerName}:null,subscription:billing.data()?.public||null,payments:ps.docs.map(d=>d.data()).filter(d=>d.environment===c.environment),transfers:ts.docs.map(d=>{const t=d.data();return{id:d.id,status:t.status,valueCents:t.valueCents,date:t.date,environment:t.environment};}).filter(t=>t.environment===c.environment)};
+    const a=account.data();return {configured:!!(c.enabled&&c.apiKey),environment:c.environment,monthlyCents:subscriptionPlans[0].monthlyCents,plans:subscriptionPlans,account:a?{id:a.id,status:a.status,payout:a.payout||null,ownerName:a.ownerName}:null,subscription:billing.data()?.public||null,payments:ps.docs.map(d=>d.data()).filter(d=>d.environment===c.environment),transfers:ts.docs.map(d=>{const t=d.data();return{id:d.id,status:t.status,valueCents:t.valueCents,date:t.date,environment:t.environment};}).filter(t=>t.environment===c.environment)};
   }
   requireAsaas(c);
   if(action==='asaas_account_create'){
@@ -65,16 +66,16 @@ export async function financialDispatch(db,uid,action,p,c,makeClient=asaasClient
     });
   }
   if(action==='asaas_subscription_create'){
-    if(!Number.isInteger(c.monthlyCents)||c.monthlyCents<=0)fail('O valor da mensalidade ainda não foi definido pela plataforma.');
+    const plan=requireSubscriptionPlan(p.planId);
     const payer=parse(payerSchema,p.payer),billingType=parse(z.enum(['PIX','CREDIT_CARD']),p.billingType);
     const ref=db.doc(`asaasSubscriptions/${c.environment}_${salonId}`),root=makeClient(c);
     const previous=(await ref.get()).data();if(previous&&previous.public.status!=='CANCELLED')return previous.public;
     return financialOnce(db,`${c.environment}:subscription:${salonId}:${previous?.subscriptionId||'first'}`,async()=>{
       const customer=await root('/customers','POST',{...payer,notificationDisabled:true,externalReference:`salon:${salonId}`});
-      const subscription=await root('/subscriptions','POST',{customer:customer.id,billingType,value:c.monthlyCents/100,nextDueDate:DateTime.now().setZone('America/Sao_Paulo').toISODate(),cycle:'MONTHLY',description:'Mensalidade do sistema de agendamento',externalReference:`subscription:${salonId}`,callback:{successUrl:`${c.appUrl}/?salon=${(await salon.get()).data().slug}&view=admin`,autoRedirect:true}});
+      const subscription=await root('/subscriptions','POST',{customer:customer.id,billingType,value:plan.monthlyCents/100,nextDueDate:DateTime.now().setZone('America/Sao_Paulo').toISODate(),cycle:'MONTHLY',description:`Mensalidade do sistema de agendamento • ${plan.name}`,externalReference:`subscription:${salonId}`,callback:{successUrl:`${c.appUrl}/?salon=${(await salon.get()).data().slug}&view=admin`,autoRedirect:true}});
       const list=await root(`/subscriptions/${subscription.id}/payments?limit=1`),first=list.data?.[0];
-      const result={id:subscription.id,status:'AWAITING_PAYMENT',monthlyCents:c.monthlyCents,billingType,invoiceUrl:checkoutUrl(first?.invoiceUrl),paidThrough:null};
-      await ref.set({salonId,environment:c.environment,customerId:customer.id,subscriptionId:subscription.id,public:result,createdAt:iso()});
+      const result={id:subscription.id,status:'AWAITING_PAYMENT',monthlyCents:plan.monthlyCents,planId:plan.id,planName:plan.name,whatsapp:plan.whatsapp,billingType,invoiceUrl:checkoutUrl(first?.invoiceUrl),paidThrough:null};
+      await ref.set({salonId,environment:c.environment,customerId:customer.id,subscriptionId:subscription.id,planId:plan.id,public:result,createdAt:iso()});
       return result;
     });
   }

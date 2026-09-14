@@ -49,8 +49,9 @@ test('transport uses only approved hosts and does not expose echoed credentials 
   await assert.rejects(api('/payments','POST',{value:5}),e=>e.definitive&&!e.message.includes('private-key'));assert.equal(got.url,'https://api-sandbox.asaas.com/v3/payments');assert.equal(got.options.redirect,'error');assert.equal(got.options.headers.access_token,'private-key');
 });
 test('configuration status is sanitized and restricted to financial staff',async()=>{
-  const f=await fixture();await assert.rejects(f.rpc(f.clientId,'asaas_status'),e=>e.code==='permission-denied');const status=await f.rpc(f.uid,'asaas_status');assert.ok(!JSON.stringify(status).includes('encryptedKey'));assert.ok(!JSON.stringify(status).includes('salon-key'));assert.equal(status.monthlyCents,7900);
+  const f=await fixture();await assert.rejects(f.rpc(f.clientId,'asaas_status'),e=>e.code==='permission-denied');const status=await f.rpc(f.uid,'asaas_status');assert.ok(!JSON.stringify(status).includes('encryptedKey'));assert.ok(!JSON.stringify(status).includes('salon-key'));assert.equal(status.monthlyCents,5990);
   const result=await financialDispatch(db,f.uid,'asaas_status',{salon_id:f.salonId},{environment:'sandbox',enabled:false});assert.equal(result.configured,false);
+  assert.deepEqual(result.plans.map(p=>[p.id,p.monthlyCents,p.whatsapp,p.available]),[['BASIC',5990,false,true],['WHATSAPP',9990,true,false]]);
 });
 test('duplicate network operations execute only once even under concurrency',async()=>{
   let calls=0;const key=randomUUID();const runs=await Promise.allSettled([financialOnce(db,key,async()=>{calls++;return{id:'one'};}),financialOnce(db,key,async()=>{calls++;return{id:'two'};})]);assert.equal(calls,1);assert.ok(runs.some(r=>r.status==='fulfilled'));assert.ok(['one','two'].includes((await financialOnce(db,key,()=>{throw Error('must not run');})).id));
@@ -75,8 +76,23 @@ test('late payments require refund review and never steal a reserved slot',async
 test('only owner can refund and pending refund is not labeled refunded',async()=>{
   const f=await fixture(),charge=await f.checkout();f.payments.get(charge.id).status='RECEIVED';await assert.rejects(f.rpc(f.clientId,'asaas_refund',{payment_id:charge.id}),e=>e.code==='permission-denied');const result=await f.rpc(f.uid,'asaas_refund',{payment_id:charge.id});assert.equal(result.status,'REFUND_REQUESTED');
 });
-test('monthly subscription amount belongs to the platform configuration',async()=>{
-  const f=await fixture();await f.rpc(f.uid,'asaas_subscription_create',{payer,billingType:'PIX',monthlyCents:1});assert.equal(f.calls.find(c=>c.path==='/subscriptions').body.value,79);assert.equal(f.calls.find(c=>c.path==='/subscriptions').body.cycle,'MONTHLY');
+test('subscription price and features come from the selected server plan, ignoring payload and legacy price',async()=>{
+  const f=await fixture();const result=await f.rpc(f.uid,'asaas_subscription_create',{payer,billingType:'PIX',planId:'BASIC',monthlyCents:1,whatsapp:true,planName:'Com WhatsApp'});
+  const sent=f.calls.find(c=>c.path==='/subscriptions').body;assert.equal(sent.value,59.9);assert.equal(sent.cycle,'MONTHLY');assert.match(sent.description,/Sem WhatsApp/);
+  assert.equal(result.monthlyCents,5990);assert.equal(result.planId,'BASIC');assert.equal(result.whatsapp,false);
+  const saved=(await db.doc(`asaasSubscriptions/sandbox_${f.salonId}`).get()).data();assert.equal(saved.planId,'BASIC');assert.equal(saved.public.monthlyCents,5990);
+  await f.rpc(f.uid,'asaas_subscription_create',{payer,billingType:'PIX',planId:'BASIC'});assert.equal(f.calls.filter(c=>c.path==='/subscriptions').length,1);
+});
+test('WhatsApp plan cannot be purchased before the integration is ready, even with forged availability',async()=>{
+  const f=await fixture();await assert.rejects(f.rpc(f.uid,'asaas_subscription_create',{payer,billingType:'PIX',planId:'WHATSAPP',available:true,monthlyCents:9990}),e=>e.code==='failed-precondition');
+  assert.equal(f.calls.length,0);assert.equal((await db.doc(`asaasSubscriptions/sandbox_${f.salonId}`).get()).exists,false);
+});
+test('invalid plans and non-owner subscription requests never reach the provider',async()=>{
+  const f=await fixture();await assert.rejects(f.rpc(f.uid,'asaas_subscription_create',{payer,billingType:'PIX',planId:'FREE'}),e=>e.code==='invalid-argument');
+  await assert.rejects(f.rpc(f.clientId,'asaas_subscription_create',{payer,billingType:'PIX',planId:'BASIC'}),e=>e.code==='permission-denied');assert.equal(f.calls.length,0);
+});
+test('disabled production billing remains blocked after plans are priced',async()=>{
+  const f=await fixture();await assert.rejects(financialDispatch(db,f.uid,'asaas_subscription_create',{salon_id:f.salonId,payer,billingType:'PIX',planId:'BASIC'},{...config,enabled:false,environment:'production'},f.make));assert.equal(f.calls.length,0);
 });
 test('bank destination must match salon owner and payout settings are owner-only',async()=>{
   const f=await fixture(),settings={...f.account.payout,weekday:1,monthday:1};await assert.rejects(f.rpc(f.clientId,'asaas_payout_save',{settings}),e=>e.code==='permission-denied');await assert.rejects(f.rpc(f.uid,'asaas_payout_save',{settings:{...settings,bankAccount:{...bank,cpfCnpj:'99999999999'}}}));await f.rpc(f.uid,'asaas_payout_save',{settings});

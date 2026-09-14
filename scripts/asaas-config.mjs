@@ -18,7 +18,6 @@ function validate(config) {
   if (typeof config.webhookToken !== 'string' || config.webhookToken.length < 32) throw new Error('webhookToken deve ter pelo menos 32 caracteres.');
   if (config.enabled && (!config.apiKey || config.apiKey.startsWith('COLE_'))) throw new Error('Não habilite sem uma chave API do Asaas.');
   if (config.environment === 'production' && config.enabled && config.subaccountsApproved !== true) throw new Error('Subcontas ainda não foram aprovadas pelo Asaas.');
-  if (config.monthlyCents !== null && (!Number.isInteger(config.monthlyCents) || config.monthlyCents < 100)) throw new Error('monthlyCents deve ser null ou um inteiro de pelo menos 100.');
   return config;
 }
 
@@ -33,7 +32,6 @@ if (command === 'init') {
     webhookToken: randomBytes(32).toString('base64url'),
     webhookUrl: 'https://southamerica-east1-agendamento-salao-bfe26.cloudfunctions.net/asaasWebhook',
     appUrl: 'https://agendamento-taupe-mu.vercel.app',
-    monthlyCents: null,
     subaccountsApproved: false
   };
   writeFileSync(output, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });

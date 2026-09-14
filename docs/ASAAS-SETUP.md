@@ -12,7 +12,9 @@ No repositório, execute:
 npm run asaas:config:init
 ```
 
-O arquivo criado em `work/secrets/asaas-config.json` é ignorado pelo Git. Defina `monthlyCents` em centavos (por exemplo, `7900` para R$ 79,00), confirme `appUrl` e mantenha `environment` como `sandbox` durante o teste.
+O arquivo criado em `work/secrets/asaas-config.json` é ignorado pelo Git. Confirme `appUrl` e use `environment: sandbox` com uma chave de sandbox durante a homologação. Uma chave identificada como produção deve usar `production` e permanecer desativada até a liberação.
+
+Os planos são definidos no servidor em `functions/src/subscription-plans.mjs`: `BASIC`, sem WhatsApp, custa R$ 59,90 por mês por salão; `WHATSAPP`, com WhatsApp, custa R$ 99,90. O plano com WhatsApp aparece como **Em breve** e sua contratação é bloqueada no servidor enquanto a integração não estiver pronta. O navegador envia somente `planId`; preço e recursos são calculados no servidor e registrados na assinatura. O campo legado `monthlyCents` do segredo é ignorado e não precisa ser editado.
 
 No painel Asaas, crie uma chave de API em **Integrações > API**. Ela deve ser inserida somente no arquivo temporário local, no campo `apiKey`. Não cole a chave nesta conversa e não a coloque em `.env` do frontend.
 
@@ -51,4 +53,4 @@ Os testes automatizados atuais usam Firestore Emulator e respostas simuladas do 
 
 As operações externas têm idempotência e tratamento de resposta ambígua. Se a rede cair depois que o Asaas aceitar uma cobrança ou repasse, o app bloqueia uma repetição automática e mostra a operação para conciliação no histórico.
 
-O valor da mensalidade e a frequência de repasse continuam sendo decisões de negócio: o código já aceita mensalidade em centavos e repasses diário, semanal ou mensal, mas não inventa esses valores.
+Os repasses podem ser diários, semanais ou mensais, conforme configuração explícita da proprietária do salão. Esta alteração de planos não ativa cobranças, não altera o valor de assinaturas existentes e não habilita repasses.
