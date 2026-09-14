@@ -50,7 +50,7 @@ test('transport uses only approved hosts and does not expose echoed credentials 
 });
 test('configuration status is sanitized and restricted to financial staff',async()=>{
   const f=await fixture();await assert.rejects(f.rpc(f.clientId,'asaas_status'),e=>e.code==='permission-denied');const status=await f.rpc(f.uid,'asaas_status');assert.ok(!JSON.stringify(status).includes('encryptedKey'));assert.ok(!JSON.stringify(status).includes('salon-key'));assert.equal(status.monthlyCents,5990);
-  const result=await financialDispatch(db,f.uid,'asaas_status',{salon_id:f.salonId},{environment:'sandbox',enabled:false});assert.equal(result.configured,false);
+  const result=await financialDispatch(db,f.uid,'asaas_status',{salon_id:f.salonId},{environment:'sandbox',enabled:false});assert.equal(result.configured,false);assert.equal(result.subaccountsApproved,false);assert.equal(result.platformReady,false);
   assert.deepEqual(result.plans.map(p=>[p.id,p.monthlyCents,p.whatsapp,p.available]),[['BASIC',5990,false,true],['WHATSAPP',9990,true,false]]);
 });
 test('duplicate network operations execute only once even under concurrency',async()=>{
