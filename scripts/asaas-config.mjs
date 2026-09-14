@@ -48,10 +48,16 @@ if (command === 'init') {
   validate(config);
   writeFileSync(output, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   console.log('Token do webhook renovado no arquivo local. Publique uma nova versão do segredo antes de reativar webhooks.');
-} else if (command === 'show-data-file') {
-  const config = validate(read());
-  if (!config.apiKey) throw new Error('Preencha a chave API no arquivo temporário antes de enviar ao Secret Manager.');
-  console.log(JSON.stringify(config));
+} else if (command === 'prepare-disabled') {
+  const config = read();
+  if (!config.apiKey) throw new Error('Preencha a chave API antes de preparar a configuração.');
+  const environment = config.apiKey.includes('_prod_') ? 'production' : config.apiKey.includes('_hmlg_') ? 'sandbox' : null;
+  if (!environment) throw new Error('Ambiente da chave desconhecido. Confira no painel antes de publicar.');
+  config.environment = environment;
+  config.enabled = false;
+  validate(config);
+  writeFileSync(output, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  console.log(`Configuração preparada para ${environment}, com pagamentos desativados.`);
 } else {
-  throw new Error('Uso: node scripts/asaas-config.mjs init | validate | show-data-file');
+  throw new Error('Uso: node scripts/asaas-config.mjs init | validate | rotate-webhook | prepare-disabled');
 }
