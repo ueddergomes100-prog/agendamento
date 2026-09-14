@@ -7,6 +7,7 @@ import { hold,changeAppointment,slots,block } from './booking.mjs';
 import { provision,editCatalog } from './catalog.mjs';
 import {registerDevice,unregisterDevice,testPush} from './devices.mjs';
 import {business,businessActions} from './business.mjs';
+import {requireSalonSubscription} from './subscription-access.mjs';
 
 const lowerRole={OWNER:'owner',MANAGER:'manager',RECEPTIONIST:'reception',PROFESSIONAL:'professional',FINANCE:'finance'};
 const rows=snap=>snap.docs.map(x=>({id:x.id,...x.data()}));
@@ -39,6 +40,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
   const salonId=parse(id,p.salon_id),salon=db.doc(`salons/${salonId}`);
   if(action==='slots') return slots(db,salon,p,uid);
   requireUser(uid);
+  if(['hold','publish_salon'].includes(action))await requireSalonSubscription(db,salonId);
   if(action==='hold') return hold(db,salon,uid,p);
   if(businessActions.includes(action))return business(db,salon,uid,action,p);
   if(['confirm','release_hold','cancel','reschedule','checkin','review','admin_status'].includes(action)) return changeAppointment(db,salon,uid,action,p);

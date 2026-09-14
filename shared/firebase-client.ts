@@ -39,7 +39,7 @@ export class FirebaseSalonApi extends SalonApi {
     const p=clean({...(!payload.salon_id&&this.currentSalon?{salon_id:this.currentSalon}:{}),...payload});
     if(['hold','provision_salon','admin_block'].includes(action)&&!p.request_id)p.request_id=crypto.randomUUID();
     try{
-      const response=await httpsCallable<{action:string;payload:Record<string,unknown>},T>(this.functions,'salonApi')({action,payload:p});
+      const response=await httpsCallable<{action:string;payload:Record<string,unknown>},T>(this.functions,action.startsWith('asaas_')?'asaasApi':'salonApi')({action,payload:p});
       if(action==='catalog')this.currentSalon=(response.data as {salon:{id:string}}).salon.id;
       return response.data;
     }catch(error){throw this.friendly(error);}

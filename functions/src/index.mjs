@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { dispatch,rateLimit } from './api.mjs';
 import { parse } from './validation.mjs';
 export {deliverNotifications,releaseExpiredHolds,deliverBookingUpdate} from './jobs.mjs';
+export {asaasApi,asaasWebhook,asaasEventWorker,asaasScheduledPayouts} from './asaas-functions.mjs';
 
 initializeApp();
 const db=getFirestore();

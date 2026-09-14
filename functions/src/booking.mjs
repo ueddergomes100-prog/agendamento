@@ -96,6 +96,7 @@ export async function changeAppointment(db,salon,uid,action,payload) {
     if (action === 'confirm' && appSnap.exists && ['CONFIRMED','CHECKED_IN','IN_PROGRESS','COMPLETED'].includes(a.status)) return a;
     if (action === 'cancel' && a.status === 'CANCELLED') return a;
     if (action === 'release_hold' && appSnap.exists) return {ok:true};
+    if (a.paymentPending && ['confirm','release_hold'].includes(action)) fail('Este horário tem uma cobrança em andamento. Confira o pagamento ou aguarde a reserva expirar.');
     if (['confirm','release_hold'].includes(action) && a.status !== 'HOLD') fail('Esta reserva não pode ser confirmada.');
     if (action === 'confirm' && (a.hold_expires_at <= toISO(now))) fail('Sua reserva expirou. Escolha um horário novamente.');
     if (action === 'confirm' && a.deposit_cents > 0) fail('Conecte um provedor de pagamentos antes de confirmar serviços com sinal.');
@@ -130,7 +131,8 @@ export async function changeAppointment(db,salon,uid,action,payload) {
     } else if (action === 'release_hold' || action === 'cancel') {
       appendEntry(tx,oldRef,oldEntries,null,now,a.id);
       if (action === 'release_hold') { tx.delete(holdRef); return {ok:true}; }
-      a = {...a,status:'CANCELLED'};
+      a = {...a,status:'CANCELLED',...(a.paymentId?{paymentStatus:'REFUND_REVIEW_REQUIRED'}:{})};
+      if(a.paymentId)tx.set(salon.collection('payments').doc(a.paymentId),{outcome:'REFUND_REQUIRED',updatedAt:toISO(now)},{merge:true});
     } else if (action === 'reschedule') {
       if (busy(newWindow,newEntries,now,a.id)) fail('Horário indisponível. Seu agendamento anterior foi mantido.','already-exists');
       const duration = Date.parse(a.ends_at)-Date.parse(a.starts_at);
