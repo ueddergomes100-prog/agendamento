@@ -8,6 +8,6 @@ export class SalonApi {
   async init(){return this.session;}
   async rpc<T=unknown>(_action:string,_payload:Record<string,unknown>={}):Promise<T>{throw new Error('Conecte o Firebase para continuar.');}
   async login(_email:string,_password:string):Promise<Session|null>{throw new Error('Conecte o Firebase para entrar.');}
-  async register(_email:string,_password:string,_name:string,_phone:string):Promise<Session|null>{throw new Error('Conecte o Firebase para cadastrar.');}
+  async register(_email:string,_password:string,_name:string,_phone:string,_accountType:'CLIENT'|'SALON'='CLIENT'):Promise<Session|null>{throw new Error('Conecte o Firebase para cadastrar.');}
   async logout(){this.session=null;}
 }

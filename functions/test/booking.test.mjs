@@ -18,7 +18,8 @@ if(day.weekday===7)day=day.plus({days:1});
 const at=(hour,minute=0)=>day.set({hour,minute}).toUTC().toISO();
 const holdPayload=(hour,minute=0)=>({service_id:service,professional_id:pro,unit_id:unit,starts_at:at(hour,minute),request_id:request()});
 before(async()=>{
-  for(const user of [uid,client,attacker])await rpc(user,'save_profile',{name:user,phone:'11999990000'});
+  await rpc(uid,'save_profile',{name:uid,phone:'11999990000',account_type:'SALON'});
+  for(const user of [client,attacker])await rpc(user,'save_profile',{name:user,phone:'11999990000',account_type:'CLIENT'});
   salon=await rpc(uid,'provision_salon',{name:'Integration Salon',slug:`integration-${Date.now()}`,address:'São Paulo',request_id:request()});
   otherSalon=await rpc(attacker,'provision_salon',{name:'Other Salon',slug:`other-${Date.now()}`,address:'São Paulo',request_id:request()});
   catalog=await rpc(uid,'catalog',{slug:salon.slug});unit=catalog.units[0].id;
@@ -34,6 +35,7 @@ test('provisioning is idempotent and reserves globally unique slugs',async()=>{
   assert.deepEqual(second,first);
   await assert.rejects(rpc(attacker,'provision_salon',{...p,request_id:request()}),e=>e.code==='already-exists');
   await assert.rejects(rpc(client,'catalog',{slug:first.slug}),e=>e.code==='permission-denied');
+  await assert.rejects(rpc(client,'provision_salon',{name:'Cliente não pode',slug:`cliente-${Date.now()}`,address:'São Paulo',request_id:request()}),e=>e.code==='permission-denied');
 });
 test('tenant context is validated on the server, regardless of client payload',async()=>{
   await assert.rejects(rpc(attacker,'admin_rules',{min_notice_minutes:0,max_future_days:365,cancel_hours:0,reschedule_hours:0}),e=>e.code==='permission-denied');

@@ -45,7 +45,7 @@ export class FirebaseSalonApi extends SalonApi {
     }catch(error){throw this.friendly(error);}
   }
   async login(email:string,password:string){try{await signInWithEmailAndPassword(this.auth,email,password);return this.syncSession();}catch(e){throw this.friendly(e);}}
-  async register(email:string,password:string,name:string,phone:string){try{const result=await createUserWithEmailAndPassword(this.auth,email,password);await updateProfile(result.user,{displayName:name});await this.syncSession();await this.rpc('save_profile',{name,phone});return this.session;}catch(e){throw this.friendly(e);}}
+  async register(email:string,password:string,name:string,phone:string,accountType:'CLIENT'|'SALON'='CLIENT'){try{const result=await createUserWithEmailAndPassword(this.auth,email,password);await updateProfile(result.user,{displayName:name});await this.syncSession();await this.rpc('save_profile',{name,phone,account_type:accountType});return this.session;}catch(e){throw this.friendly(e);}}
   async googleLogin(){try{await signInWithPopup(this.auth,new GoogleAuthProvider());return this.syncSession();}catch(e){throw this.friendly(e);}}
   async resetPassword(email:string){try{await sendPasswordResetEmail(this.auth,email);}catch(e){throw this.friendly(e);}}
   async logout(){const {disablePush}=await import('./push');await disablePush(this);await signOut(this.auth);this.session=null;}

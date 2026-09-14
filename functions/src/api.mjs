@@ -24,11 +24,19 @@ export async function dispatch(db,uid,action,p={},claims={}) {
     return {...data.catalog,published:data.published,features:data.features};
   }
   if(action==='salons') return rows(await db.collection('publicSalons').where('published','==',true).orderBy('name').limit(50).get()).map(x=>({...x.catalog.salon,branding:x.catalog.branding}));
+  if(action==='my_account') {
+    requireUser(uid);
+    const [profile,links]=await Promise.all([db.doc(`users/${uid}`).get(),db.collection(`users/${uid}/salons`).limit(100).get()]);
+    const data=profile.data()||{},legacySalon=links.docs.some(x=>['OWNER','MANAGER','RECEPTIONIST','PROFESSIONAL','FINANCE'].includes(x.data()?.role));
+    return {account_type:data.account_type||(legacySalon?'SALON':'CLIENT'),profile:data};
+  }
   if(action==='provision_salon') return provision(db,requireUser(uid),p);
   if(action==='save_profile') {
     requireUser(uid);
-    const profile=parse(z.object({name:text(100),phone:z.string().trim().min(8).max(30),birthday:z.union([date,z.literal('')]).default(''),marketing:z.boolean().default(false)}),p);
-    await db.doc(`users/${uid}`).set({id:uid,...profile,updatedAt:Timestamp.now()},{merge:true}); return {id:uid,...profile};
+    const profile=parse(z.object({name:text(100),phone:z.string().trim().min(8).max(30),birthday:z.union([date,z.literal('')]).default(''),marketing:z.boolean().default(false),account_type:z.enum(['CLIENT','SALON']).optional()}),p);
+    const ref=db.doc(`users/${uid}`),existing=(await ref.get()).data(),accountType=profile.account_type||existing?.account_type;
+    if(profile.account_type&&existing?.account_type&&profile.account_type!==existing.account_type) fail('O tipo desta conta não pode ser alterado.');
+    await ref.set({id:uid,...profile,...(accountType?{account_type:accountType}:{}),updatedAt:Timestamp.now()},{merge:true}); return {id:uid,...profile,...(accountType?{account_type:accountType}:{} )};
   }
   if(action==='my_salons') { requireUser(uid); const links=rows(await db.collection(`users/${uid}/salons`).limit(100).get());const catalogs=links.length?await db.getAll(...links.map(l=>db.doc(`publicSalons/${l.salonId||l.id}`))):[];return links.map((l,i)=>({...l,name:catalogs[i].data()?.name||l.name,slug:catalogs[i].data()?.slug||l.slug})); }
   if(action==='unregister_device')return unregisterDevice(db,requireUser(uid),p);
@@ -47,7 +55,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
   if(action==='admin_block') return block(db,salon,uid,p);
   if(['admin_service','admin_professional','admin_branding','admin_rules','publish_salon','unpublish_salon','admin_info','admin_unit','admin_category','admin_addon','admin_remove'].includes(action)) return editCatalog(db,salon,uid,action,p);
   const member=(await salon.collection('members').doc(uid).get()).data();
-  if(action==='me') return {profile:(await db.doc(`users/${uid}`).get()).data()||null,memberships:member?.status==='ACTIVE'?[{salon_id:salonId,role:lowerRole[member.role]}]:[]};
+  if(action==='me') { const profile=(await db.doc(`users/${uid}`).get()).data()||null; const memberships=member?.status==='ACTIVE'?[{salon_id:salonId,role:lowerRole[member.role]}]:[]; return {profile,account_type:profile.account_type||(memberships.length?'SALON':'CLIENT'),memberships}; }
   if(action==='appointments') {
     let query=salon.collection('appointments').where('client_id','==',uid).orderBy('starts_at','asc');
     if(p.after) query=query.startAfter(parse(z.string().datetime(),p.after));
@@ -74,6 +82,7 @@ export async function dispatch(db,uid,action,p={},claims={}) {
       if(!target.exists||data.user_id===uid||existing.data()?.role==='OWNER') fail('Usuário inválido para esta alteração.');
       if(data.role==='PROFESSIONAL'&&!pro.exists) fail('Vincule uma profissional deste salão.');
       tx.set(salon.collection('members').doc(data.user_id),{salonId,userId:data.user_id,role:data.role,status:data.status,professionalId:data.professional_id||null,updatedAt:Timestamp.now()});
+      tx.set(db.doc(`users/${data.user_id}`),{account_type:'SALON',updatedAt:Timestamp.now()},{merge:true});
       const salonData=salonSnapshot.data();
       tx.set(db.doc(`users/${data.user_id}/salons/${salonId}`),{salonId,name:salonData.name,slug:salonData.slug,role:data.role,updatedAt:Timestamp.now()},{merge:true});
       tx.create(salon.collection('auditLogs').doc(randomUUID()),{salonId,actorId:uid,action:'member_changed',targetId:data.user_id,created_at:new Date().toISOString()});return {ok:true};

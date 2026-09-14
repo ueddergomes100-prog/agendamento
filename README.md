@@ -4,10 +4,10 @@ Aplicação responsiva conectada ao Firebase (`agendamento-salao-bfe26`), public
 
 ## Testar o uso
 
-1. Crie sua conta, cadastre o salão e configure profissionais, serviços, horários e políticas.
+1. Escolha o cadastro correto: **cliente** para reservar horários ou **dono de salão** para criar e administrar um espaço. Depois configure profissionais, serviços, horários e políticas.
 2. Mantenha o sinal em zero enquanto o gateway está pendente; use pagamento no salão.
 3. Publique o salão e abra seu link em outra conta para testar reserva, reagendamento e cancelamento. Os dados cadastrados nesse fluxo são reais e persistentes.
-4. Para dar acesso à equipe, a pessoa precisa criar uma conta primeiro. A proprietária pode vinculá-la pelo e-mail na gestão de acessos.
+4. Para dar acesso à equipe, a pessoa precisa criar uma conta primeiro. A proprietária pode vinculá-la pelo e-mail na gestão de acessos; contas convidadas passam a ter tipo salão e recebem apenas o papel concedido.
 5. No perfil do salão, toque em **Ativar notificações** e permita os alertas. Depois use **Enviar notificação de teste**. A autorização é individual por aparelho.
 6. No iPhone/iPad com iOS 16.4+, adicione o site à Tela de Início pelo menu Compartilhar e abra pelo ícone antes de ativar o push. No Android, instale pelo menu do navegador. Teste também com o app em segundo plano.
 

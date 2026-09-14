@@ -5,7 +5,7 @@ Projeto único: `agendamento-salao-bfe26`. Região do banco e das funções: `so
 ## O que foi implementado
 
 - SDK Firebase web, autenticação e-mail/senha, recuperação de senha e persistência de sessão do Auth. Nenhum token é salvo manualmente no localStorage.
-- Cadastro self-service: conta → salão em rascunho → equipe → serviços → identidade → publicação → link/QR. Slug reservado em transação, provisionamento idempotente e limite inicial de 10 salões por conta.
+- Cadastro self-service separado: contas **CLIENT** reservam horários; contas **SALON** criam salões em rascunho, convidam equipe e administram o espaço. O servidor bloqueia o provisionamento de salão para contas de cliente. Slug reservado em transação, provisionamento idempotente e limite inicial de 10 salões por conta.
 - Catálogo público limitado, separado de documentos privados, com projeção atualizada atomicamente. Os oito temas usam o ThemeProvider existente. Upload de logo/capa via Storage, com regras de tamanho/tipo e papel.
 - Membros OWNER, MANAGER, RECEPTIONIST, PROFESSIONAL e FINANCE. Usuário pode ter vínculos diferentes por salão. Super Admin é uma claim global validada no servidor; não existe autopromoção pelo cliente.
 - Firestore Rules negam todas as escritas diretas. Operações críticas usam a callable `salonApi`, Zod, Auth, App Check obrigatório em produção e verificação de membro por transação.

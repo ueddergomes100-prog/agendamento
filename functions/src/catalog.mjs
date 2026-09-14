@@ -9,15 +9,17 @@ const categories=['Cabelo','Unhas','Sobrancelha','Cílios','Maquiagem','Estétic
 const safeImage=z.union([z.literal(''),z.string().url().max(2000).refine(s=>s.startsWith('https://'))]).default('');
 const color=z.union([z.literal(''),z.string().regex(/^#[0-9a-fA-F]{6}$/)]);
 export async function provision(db,uid,payload) {
-  const p=parse(z.object({name:text(100),slug:z.string().min(3).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),address:text(250),timezone:z.enum(['America/Sao_Paulo','America/Manaus','America/Recife','America/Fortaleza','America/Belem','America/Rio_Branco','America/Cuiaba']).default('America/Sao_Paulo'),preset:z.enum(presets).default('Rose'),request_id:id}),payload);
+  const p=parse(z.object({name:text(100),slug:z.string().min(3).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),address:text(250),timezone:z.enum(['America/Sao_Paulo','America/Manaus','America/Recife','America/Fortaleza','America/Belem','America/Rio_Branco','America/Cuiaba']).default('America/Sao_Paulo'),preset:z.enum(presets).default('Rose'),request_id:id.default(() => randomUUID())}),payload);
   const salonId=randomUUID(),unitId=randomUUID(),requestRef=db.doc(`users/${uid}/provisionRequests/${p.request_id}`);
   return db.runTransaction(async tx=>{
     const [request,slug,profile,owned]=await tx.getAll(requestRef,db.doc(`salonSlugs/${p.slug}`),db.doc(`users/${uid}`),db.doc(`users/${uid}/limits/salons`));
     if(request.exists) return request.data();
     if(!profile.exists) fail('Complete seu perfil.');
+    if(profile.data()?.account_type==='CLIENT') fail('Contas de cliente não podem cadastrar salões. Crie uma conta de proprietário.','permission-denied');
     if(slug.exists) fail('Este endereço já está em uso. Escolha outro.','already-exists');
     if((owned.data()?.count||0)>=10) fail('Limite de salões por conta atingido. Entre em contato com o suporte.','resource-exhausted');
     const now=Timestamp.now();
+    tx.set(profile.ref,{account_type:'SALON',updatedAt:now},{merge:true});
     const catalog={salon:{id:salonId,slug:p.slug,name:p.name,description:''},branding:{preset:p.preset,primary_color:'',font_style:'Editorial',dark_allowed:true,logo_url:'',cover_url:''},units:[{id:unitId,name:'Unidade principal',address:p.address,timezone:p.timezone,schedule:initialHours}],categories,services:[],professionals:[],service_professionals:[],addons:[],settings:{min_notice_minutes:60,max_future_days:60,slot_minutes:15},policies:{cancel_hours:24,reschedule_hours:12}};
     const features={loyalty:false,giftCards:false,aiAssistant:false,whatsapp:false,packages:false,subscriptions:false,marketplace:false,portfolio:false};
     const salon=db.doc(`salons/${salonId}`);
